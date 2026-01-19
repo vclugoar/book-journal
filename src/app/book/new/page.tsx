@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ChevronDown, Sparkles, BookOpen, Palette } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Sparkles, BookOpen, Palette, PartyPopper } from 'lucide-react';
+import { celebrateBookCompletion } from '@/lib/confetti';
 import { Button, Card, CardContent, Input, Textarea, SaveIndicator } from '@/components/ui';
 import { StarRating, OverallMagic, CozinessLevel, MissedMyStopRisk, RereadLikelihood, Lendability } from '@/components/ratings';
 import { SeasonPicker, WeatherPicker, TimeOfDayPicker, ScentTags, RoomPicker, FortuneCookie, QuoteForPillow } from '@/components/prompts';
@@ -30,10 +31,28 @@ export default function NewBookPage() {
   const [bookId, setBookId] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<string[]>(['rating', 'ratings']);
   const [mounted, setMounted] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const prevDateFinishedRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Celebrate when book is marked as finished
+  useEffect(() => {
+    if (!mounted) return;
+
+    const wasNotFinished = prevDateFinishedRef.current === null || prevDateFinishedRef.current === '';
+    const isNowFinished = bookData.dateFinished !== null && bookData.dateFinished !== '';
+
+    if (wasNotFinished && isNowFinished) {
+      celebrateBookCompletion();
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 4000);
+    }
+
+    prevDateFinishedRef.current = bookData.dateFinished;
+  }, [bookData.dateFinished, mounted]);
 
   // Auto-save functionality
   const handleSave = useCallback(async (data: typeof bookData) => {
@@ -206,6 +225,30 @@ export default function NewBookPage() {
           </div>
         </div>
       </header>
+
+      {/* Celebration Toast */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50"
+          >
+            <div className="flex items-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/80 dark:to-orange-900/80 border border-amber-200 dark:border-amber-700 shadow-lg shadow-amber-200/30 dark:shadow-amber-900/30">
+              <PartyPopper className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              <div>
+                <p className="font-serif font-semibold text-amber-900 dark:text-amber-100">
+                  Another adventure complete!
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  Congratulations on finishing your book
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

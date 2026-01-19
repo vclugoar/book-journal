@@ -1,8 +1,32 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import type { BookPrompts } from '@/types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+const seasonEmoji: Record<string, string> = {
+  spring: '🌸',
+  summer: '☀️',
+  autumn: '🍂',
+  winter: '❄️',
+};
+
+export function getBookPersonality(prompts: BookPrompts): string | null {
+  const season = prompts.season;
+  const room = prompts.roomInHouse;
+
+  if (!season && !room) return null;
+
+  const emoji = season ? seasonEmoji[season] : '';
+  const parts = [
+    season ? season.charAt(0).toUpperCase() + season.slice(1) : null,
+    room?.toLowerCase(),
+    'read',
+  ].filter(Boolean);
+
+  return `${emoji} ${parts.join(' ')}`.trim();
 }
 
 export function formatDate(date: string | null): string {

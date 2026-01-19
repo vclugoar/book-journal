@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Star, Sparkles, BookOpen, Trash2 } from 'lucide-react';
 import { Card, Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
-import { formatDate } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { formatDate, getBookPersonality, cn } from '@/lib/utils';
 import type { BookEntry } from '@/types';
 
 interface BookCardProps {
@@ -19,6 +18,7 @@ interface BookCardProps {
 export function BookCard({ book, index = 0, collageThumbnail, onDelete }: BookCardProps) {
   const rating = book.overallRating ?? 0;
   const magicLevel = book.ratings?.overallMagic ?? 0;
+  const personality = book.prompts ? getBookPersonality(book.prompts) : null;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Prefer collage thumbnail over book cover
@@ -94,6 +94,15 @@ export function BookCard({ book, index = 0, collageThumbnail, onDelete }: BookCa
               )}
             </div>
 
+            {/* Book Personality Chip */}
+            {personality && (
+              <div className="pt-1">
+                <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
+                  {personality}
+                </span>
+              </div>
+            )}
+
             {/* Date */}
             {book.dateFinished && (
               <p className="text-xs text-muted-foreground">
@@ -134,7 +143,7 @@ export function BookCard({ book, index = 0, collageThumbnail, onDelete }: BookCa
             <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
+            <Button variant="danger" onClick={confirmDelete}>
               Delete
             </Button>
           </DialogFooter>

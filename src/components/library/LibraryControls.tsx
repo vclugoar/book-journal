@@ -173,7 +173,7 @@ export function LibraryControls({ totalBooks, onDeleteAll }: LibraryControlsProp
             <Button variant="ghost" onClick={() => setShowDeleteAllDialog(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteAll}>
+            <Button variant="danger" onClick={handleDeleteAll}>
               Delete All
             </Button>
           </DialogFooter>

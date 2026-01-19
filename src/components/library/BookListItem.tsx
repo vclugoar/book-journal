@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Star, Sparkles, BookOpen, ChevronRight, Trash2 } from 'lucide-react';
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
-import { formatDate } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { formatDate, getBookPersonality, cn } from '@/lib/utils';
 import type { BookEntry } from '@/types';
 
 interface BookListItemProps {
@@ -19,6 +18,7 @@ interface BookListItemProps {
 export function BookListItem({ book, index = 0, collageThumbnail, onDelete }: BookListItemProps) {
   const rating = book.overallRating ?? 0;
   const magicLevel = book.ratings?.overallMagic ?? 0;
+  const personality = book.prompts ? getBookPersonality(book.prompts) : null;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Prefer collage thumbnail over book cover
@@ -74,6 +74,11 @@ export function BookListItem({ book, index = 0, collageThumbnail, onDelete }: Bo
               {book.title}
             </h3>
             <p className="text-sm text-muted-foreground truncate">{book.author}</p>
+            {personality && (
+              <span className="inline-block text-xs px-2 py-0.5 mt-1 rounded-full bg-muted/50 text-muted-foreground">
+                {personality}
+              </span>
+            )}
           </div>
 
           {/* Star rating */}
@@ -137,7 +142,7 @@ export function BookListItem({ book, index = 0, collageThumbnail, onDelete }: Bo
             <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
+            <Button variant="danger" onClick={confirmDelete}>
               Delete
             </Button>
           </DialogFooter>

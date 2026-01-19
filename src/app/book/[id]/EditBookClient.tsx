@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ChevronDown, Trash2, Palette, BookOpen } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Trash2, Palette, BookOpen, PartyPopper } from 'lucide-react';
+import { celebrateBookCompletion } from '@/lib/confetti';
 import { Button, Card, CardContent, Input, Textarea, SaveIndicator, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import { StarRating, OverallMagic, CozinessLevel, MissedMyStopRisk, RereadLikelihood, Lendability } from '@/components/ratings';
 import { SeasonPicker, WeatherPicker, TimeOfDayPicker, ScentTags, RoomPicker, FortuneCookie, QuoteForPillow } from '@/components/prompts';
@@ -27,6 +28,8 @@ export default function EditBookPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [expandedSections, setExpandedSections] = useState<string[]>(['rating', 'ratings']);
   const [mounted, setMounted] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const prevDateFinishedRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -51,6 +54,8 @@ export default function EditBookPage() {
             coverImage: book.coverImage,
             notes: book.notes,
           });
+          // Initialize the ref with the loaded value
+          prevDateFinishedRef.current = book.dateFinished;
         } else {
           router.push('/library');
         }
@@ -64,6 +69,22 @@ export default function EditBookPage() {
 
     loadBook();
   }, [bookId, router]);
+
+  // Celebrate when book is marked as finished
+  useEffect(() => {
+    if (!mounted || isLoading) return;
+
+    const wasNotFinished = prevDateFinishedRef.current === null || prevDateFinishedRef.current === '';
+    const isNowFinished = bookData.dateFinished !== null && bookData.dateFinished !== '';
+
+    if (wasNotFinished && isNowFinished) {
+      celebrateBookCompletion();
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 4000);
+    }
+
+    prevDateFinishedRef.current = bookData.dateFinished;
+  }, [bookData.dateFinished, mounted, isLoading]);
 
   // Auto-save functionality
   const handleSave = useCallback(async (data: typeof bookData) => {
@@ -243,6 +264,30 @@ export default function EditBookPage() {
         </div>
       </header>
 
+      {/* Celebration Toast */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50"
+          >
+            <div className="flex items-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/80 dark:to-orange-900/80 border border-amber-200 dark:border-amber-700 shadow-lg shadow-amber-200/30 dark:shadow-amber-900/30">
+              <PartyPopper className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              <div>
+                <p className="font-serif font-semibold text-amber-900 dark:text-amber-100">
+                  Another adventure complete!
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  Congratulations on finishing your book
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div
@@ -327,6 +372,30 @@ export default function EditBookPage() {
               </Card>
             );
           })}
+
+          {/* Fortune Cookie Display */}
+          {bookData.prompts.fortuneCookieMessage && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative overflow-hidden rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/50 dark:border-amber-800/30 p-6"
+            >
+              <div className="flex items-start gap-4">
+                <span className="text-3xl flex-shrink-0">🥠</span>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 uppercase tracking-wider">
+                    Fortune Cookie Wisdom
+                  </p>
+                  <p className="font-serif text-lg italic text-amber-900 dark:text-amber-100 leading-relaxed">
+                    &ldquo;{bookData.prompts.fortuneCookieMessage}&rdquo;
+                  </p>
+                </div>
+              </div>
+              {/* Decorative sparkles */}
+              <div className="absolute top-2 right-3 text-amber-300/50 dark:text-amber-600/30 text-xs">✨</div>
+              <div className="absolute bottom-3 right-6 text-amber-300/50 dark:text-amber-600/30 text-sm">✨</div>
+            </motion.div>
+          )}
 
           {/* Notes */}
           <Card>

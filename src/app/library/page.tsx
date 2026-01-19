@@ -4,6 +4,14 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, BookOpen, Sparkles, Upload } from 'lucide-react';
+
+const cozyMessages = [
+  "Your reading nook awaits...",
+  "Every great library starts with one book",
+  "Ready to capture some reading magic?",
+  "Your stories are waiting to be remembered",
+  "Time to start your cozy collection",
+];
 import { Button } from '@/components/ui';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { BookCard, BookListItem, LibraryControls } from '@/components/library';
@@ -112,21 +120,68 @@ export default function LibraryPage() {
             <div className="animate-pulse text-muted-foreground">Loading your books...</div>
           </div>
         ) : books.length === 0 ? (
-          /* Empty State */
+          /* Empty State - Cozy Version */
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center py-20"
+            className="text-center py-20 relative"
           >
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
-              <Sparkles className="h-10 w-10 text-muted-foreground" />
+            {/* Floating decorative elements */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <motion.span
+                className="absolute top-8 left-1/4 text-2xl opacity-30"
+                animate={{ y: [0, -10, 0], rotate: [0, 5, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              >
+                📚
+              </motion.span>
+              <motion.span
+                className="absolute top-16 right-1/4 text-xl opacity-20"
+                animate={{ y: [0, -8, 0], rotate: [0, -5, 0] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+              >
+                ✨
+              </motion.span>
+              <motion.span
+                className="absolute bottom-20 left-1/3 text-lg opacity-25"
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+              >
+                🌙
+              </motion.span>
+              <motion.span
+                className="absolute bottom-28 right-1/3 text-xl opacity-20"
+                animate={{ y: [0, -8, 0], rotate: [0, 10, 0] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.7 }}
+              >
+                ☕
+              </motion.span>
             </div>
-            <h2 className="font-serif text-2xl font-semibold mb-2">Your reading journey begins here</h2>
+
+            {/* Main content */}
+            <motion.div
+              className="relative w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center shadow-lg shadow-amber-200/20 dark:shadow-amber-900/10"
+              animate={{ scale: [1, 1.02, 1] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <BookOpen className="h-12 w-12 text-amber-600 dark:text-amber-400" />
+              <motion.div
+                className="absolute -top-1 -right-1"
+                animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Sparkles className="h-5 w-5 text-amber-500" />
+              </motion.div>
+            </motion.div>
+
+            <h2 className="font-serif text-2xl font-semibold mb-3 text-foreground">
+              {cozyMessages[Math.floor(Math.random() * cozyMessages.length)]}
+            </h2>
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-              Add your first book to start capturing the magic of your reading adventures.
+              Every book holds a world of feelings. Start capturing yours.
             </p>
             <Link href="/book/new">
-              <Button size="lg">
+              <Button size="lg" className="shadow-lg">
                 <Plus className="mr-2 h-5 w-5" />
                 Add Your First Book
               </Button>
