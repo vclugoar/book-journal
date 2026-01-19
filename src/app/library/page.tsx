@@ -1,41 +1,47 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, BookOpen, Sparkles } from 'lucide-react';
+import { Plus, BookOpen, Sparkles, Upload } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { BookCard, BookListItem, LibraryControls } from '@/components/library';
+import { GoodreadsImportModal } from '@/components/import';
 import { useBookStore } from '@/stores/bookStore';
 import { getAllBooks } from '@/lib/db';
 
 export default function LibraryPage() {
   const { books, setBooks, viewMode, getFilteredBooks, setIsLoading, isLoading } = useBookStore();
   const [mounted, setMounted] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const loadBooks = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const loadedBooks = await getAllBooks();
+      setBooks(loadedBooks);
+    } catch (error) {
+      console.error('Failed to load books:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [setBooks, setIsLoading]);
+
+  const handleImportComplete = useCallback(() => {
+    loadBooks();
+  }, [loadBooks]);
+
   // Load books from IndexedDB
   useEffect(() => {
-    const loadBooks = async () => {
-      setIsLoading(true);
-      try {
-        const loadedBooks = await getAllBooks();
-        setBooks(loadedBooks);
-      } catch (error) {
-        console.error('Failed to load books:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     if (mounted) {
       loadBooks();
     }
-  }, [mounted, setBooks, setIsLoading]);
+  }, [mounted, loadBooks]);
 
   const filteredBooks = getFilteredBooks();
 
@@ -55,6 +61,10 @@ export default function LibraryPage() {
             </Link>
             <div className="flex items-center gap-4">
               <ThemeToggle />
+              <Button variant="outline" onClick={() => setImportModalOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                Import
+              </Button>
               <Link href="/book/new">
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
@@ -148,6 +158,12 @@ export default function LibraryPage() {
           </div>
         )}
       </main>
+
+      <GoodreadsImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        onImportComplete={handleImportComplete}
+      />
     </div>
   );
 }

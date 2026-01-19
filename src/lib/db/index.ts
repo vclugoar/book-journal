@@ -57,6 +57,22 @@ export async function getAllBooks(): Promise<BookEntry[]> {
   return db.books.orderBy('updatedAt').reverse().toArray();
 }
 
+export async function bulkCreateBooks(
+  books: Omit<BookEntry, 'id' | 'createdAt' | 'updatedAt'>[]
+): Promise<string[]> {
+  const now = new Date().toISOString();
+  const booksWithMetadata = books.map((book) => ({
+    ...book,
+    id: crypto.randomUUID(),
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  await db.books.bulkAdd(booksWithMetadata);
+
+  return booksWithMetadata.map((book) => book.id);
+}
+
 export async function createCollage(bookId: string): Promise<string> {
   const now = new Date().toISOString();
   const id = crypto.randomUUID();

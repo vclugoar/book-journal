@@ -21,7 +21,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm',
+      'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm',
       className
     )}
     {...props}
@@ -46,40 +46,41 @@ const DialogContent = React.forwardRef<
         transition={{ duration: 0.2 }}
       />
     </DialogOverlay>
-    <DialogPrimitive.Content
-      ref={ref}
-      asChild
-      {...props}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        transition={{ duration: 0.2 }}
-        className={cn(
-          'fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%]',
-          'w-full max-w-lg max-h-[85vh] overflow-y-auto',
-          'rounded-xl bg-card p-6 shadow-xl',
-          'focus:outline-none',
-          className
-        )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <DialogPrimitive.Content
+        ref={ref}
+        asChild
+        {...props}
       >
-        {children}
-        {showClose && (
-          <DialogPrimitive.Close
-            className={cn(
-              'absolute right-4 top-4 rounded-lg p-1.5',
-              'text-muted-foreground hover:text-foreground hover:bg-muted',
-              'focus:outline-none focus:ring-2 focus:ring-ring',
-              'transition-colors'
-            )}
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
-      </motion.div>
-    </DialogPrimitive.Content>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          transition={{ duration: 0.2 }}
+          className={cn(
+            'w-full max-w-lg max-h-[85vh] overflow-y-auto',
+            'rounded-xl bg-card p-4 sm:p-6 shadow-2xl border border-border',
+            'focus:outline-none',
+            className
+          )}
+        >
+          {children}
+          {showClose && (
+            <DialogPrimitive.Close
+              className={cn(
+                'absolute right-4 top-4 rounded-lg p-1.5',
+                'text-muted-foreground hover:text-foreground hover:bg-muted',
+                'focus:outline-none focus:ring-2 focus:ring-ring',
+                'transition-colors'
+              )}
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          )}
+        </motion.div>
+      </DialogPrimitive.Content>
+    </div>
   </DialogPortal>
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
