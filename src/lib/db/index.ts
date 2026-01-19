@@ -49,6 +49,15 @@ export async function deleteBook(id: string): Promise<void> {
   await db.books.delete(id);
 }
 
+export async function deleteAllBooks(): Promise<void> {
+  // Delete all collage images first
+  await db.collageImages.clear();
+  // Delete all collages
+  await db.collages.clear();
+  // Delete all books
+  await db.books.clear();
+}
+
 export async function getBook(id: string): Promise<BookEntry | undefined> {
   return db.books.get(id);
 }
@@ -99,6 +108,10 @@ export async function updateCollage(id: string, updates: Partial<Collage>): Prom
 
 export async function getCollageByBookId(bookId: string): Promise<Collage | undefined> {
   return db.collages.where('bookId').equals(bookId).first();
+}
+
+export async function getAllCollages(): Promise<Collage[]> {
+  return db.collages.toArray();
 }
 
 export async function addCollageImage(collageId: string, imageData: Blob, filename: string): Promise<string> {

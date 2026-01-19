@@ -157,10 +157,8 @@ export function mapToBookEntry(
     author: grBook.author,
     dateStarted: grBook.dateAdded,
     dateFinished: grBook.dateRead,
-    ratings: {
-      ...defaultRatings,
-      overallMagic: grBook.myRating,
-    },
+    overallRating: grBook.myRating, // Map Goodreads rating to regular rating
+    ratings: { ...defaultRatings },
     prompts: { ...defaultPrompts },
     coverImage: null,
     notes: '',

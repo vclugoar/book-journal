@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, CardContent, SaveIndicator } from '@/components/ui';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { StickerLibrary, BackgroundColorPicker, LayerControls, ShapeCropper } from '@/components/collage';
+import { StickerLibrary, BackgroundColorPicker, LayerControls, ShapeCropper, TemplateSelector } from '@/components/collage';
 import {
   isFabricImage,
   getClipShapeId,
@@ -26,10 +26,11 @@ import {
   removeClipPathFromImage,
   type ClipShapeId,
 } from '@/lib/fabric/clipShapes';
+import { getTemplateById, type TemplateId } from '@/lib/fabric/templates';
 import { useCollageStore } from '@/stores/collageStore';
 import { useAutoSave } from '@/hooks';
 import { getBook, getCollageByBookId, createCollage, updateCollage } from '@/lib/db';
-import { cn } from '@/lib/utils';
+import { cn, resizeImage } from '@/lib/utils';
 import type { BookEntry, Collage } from '@/types';
 
 // Dynamically import CollageCanvas to avoid SSR issues with Fabric.js
@@ -102,9 +103,12 @@ export default function CollagePage() {
   const [mounted, setMounted] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState('#FDF6E3');
   const [showSidebar, setShowSidebar] = useState(true);
+  const [hasPlaceholders, setHasPlaceholders] = useState(false);
 
   const canvasRef = useRef<FabricCanvas | null>(null);
   const addImagesRef = useRef<((files: FileList | File[]) => Promise<void>) | null>(null);
+  const placeholderInputRef = useRef<HTMLInputElement>(null);
+  const activePlaceholderRef = useRef<fabric.Rect | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -154,9 +158,19 @@ export default function CollagePage() {
 
     setIsSaving(true);
     try {
+      // Generate thumbnail from canvas
+      let thumbnail = collage.thumbnail;
+      if (canvasRef.current) {
+        thumbnail = canvasRef.current.toDataURL({
+          format: 'png',
+          quality: 0.8,
+        });
+      }
+
       await updateCollage(collage.id, {
         canvasJSON: collage.canvasJSON,
         colorPalette: collage.colorPalette,
+        thumbnail,
       });
       setLastSaved(new Date().toISOString());
     } catch (error) {
@@ -180,9 +194,9 @@ export default function CollagePage() {
 
   const handleCanvasChange = useCallback(() => {
     if (canvasRef.current) {
-      // Include clipShapeId custom property in serialization
+      // Include custom properties in serialization
       const json = JSON.stringify(
-        (canvasRef.current as unknown as { toJSON: (props: string[]) => unknown }).toJSON(['clipShapeId'])
+        (canvasRef.current as unknown as { toJSON: (props: string[]) => unknown }).toJSON(['clipShapeId', 'isPlaceholder'])
       );
       updateCanvasJSON(json);
     }
@@ -230,35 +244,54 @@ export default function CollagePage() {
   const handleLayerAction = useCallback((action: string) => {
     if (!canvasRef.current) return;
 
+    const canvas = canvasRef.current as unknown as {
+      bringObjectForward: (obj: unknown) => void;
+      sendObjectBackwards: (obj: unknown) => void;
+      bringObjectToFront: (obj: unknown) => void;
+      sendObjectToBack: (obj: unknown) => void;
+      remove: (obj: unknown) => void;
+      add: (obj: unknown) => void;
+      setActiveObject: (obj: unknown) => void;
+      discardActiveObject: () => void;
+      renderAll: () => void;
+      clear: () => void;
+      getObjects: () => unknown[];
+    };
+
+    // Handle clearAll separately since it doesn't need an active object
+    if (action === 'clearAll') {
+      const objects = canvas.getObjects();
+      objects.forEach((obj) => canvas.remove(obj));
+      canvas.discardActiveObject();
+      canvas.renderAll();
+      return;
+    }
+
     const activeObj = canvasRef.current.getActiveObject();
     if (!activeObj) return;
 
     switch (action) {
-      case 'bringForward':
-        canvasRef.current.bringForward(activeObj);
-        break;
-      case 'sendBackward':
-        canvasRef.current.sendBackwards(activeObj);
-        break;
       case 'bringToFront':
-        canvasRef.current.bringToFront(activeObj);
+        canvas.bringObjectToFront(activeObj);
         break;
       case 'sendToBack':
-        canvasRef.current.sendToBack(activeObj);
+        canvas.sendObjectToBack(activeObj);
         break;
       case 'delete':
-        canvasRef.current.remove(activeObj);
-        canvasRef.current.discardActiveObject();
+        canvas.remove(activeObj);
+        canvas.discardActiveObject();
         break;
       case 'duplicate':
-        activeObj.clone?.((cloned: FabricObject) => {
+        // Fabric.js v7 clone returns a Promise
+        (activeObj as unknown as { clone: () => Promise<FabricObject> }).clone?.().then((cloned: FabricObject) => {
           cloned.set({ left: (cloned.left || 0) + 20, top: (cloned.top || 0) + 20 });
-          canvasRef.current?.add(cloned);
-          canvasRef.current?.setActiveObject(cloned);
+          canvas.add(cloned);
+          canvas.setActiveObject(cloned);
+          canvas.renderAll();
         });
-        break;
+        return; // Don't renderAll here, it's done in the promise
     }
-    canvasRef.current.renderAll();
+    canvas.renderAll();
   }, []);
 
   // Handle object selection to detect image and its shape
@@ -322,7 +355,7 @@ export default function CollagePage() {
     });
 
     const link = document.createElement('a');
-    link.download = `${book?.title || 'collage'}-vibe.png`;
+    link.download = `${book?.title || 'collage'}-mood.png`;
     link.href = dataUrl;
     link.click();
   }, [book]);
@@ -352,6 +385,168 @@ export default function CollagePage() {
     canvasRef.current.renderAll();
   }, []);
 
+  // Clear all placeholder frames from canvas
+  const clearPlaceholders = useCallback(() => {
+    if (!canvasRef.current) return;
+
+    const canvas = canvasRef.current as unknown as {
+      getObjects: () => Array<{ isPlaceholder?: boolean }>;
+      remove: (obj: unknown) => void;
+      renderAll: () => void;
+    };
+
+    const objects = canvas.getObjects();
+    const placeholders = objects.filter((obj) => obj.isPlaceholder === true);
+    placeholders.forEach((obj) => canvas.remove(obj));
+    canvas.renderAll();
+    setHasPlaceholders(false);
+  }, []);
+
+  // Handle placeholder click to upload image
+  const handlePlaceholderClick = useCallback((placeholder: fabric.Rect) => {
+    activePlaceholderRef.current = placeholder;
+    placeholderInputRef.current?.click();
+  }, []);
+
+  // Handle image upload into placeholder
+  const handlePlaceholderImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const placeholder = activePlaceholderRef.current;
+
+    if (!file || !placeholder || !canvasRef.current) {
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      const resized = await resizeImage(file, 800, 800);
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(resized);
+      });
+
+      const img = await fabric.FabricImage.fromURL(dataUrl);
+
+      // Get placeholder bounds
+      const placeholderLeft = placeholder.left || 0;
+      const placeholderTop = placeholder.top || 0;
+      const placeholderWidth = placeholder.width || 100;
+      const placeholderHeight = placeholder.height || 100;
+      const placeholderAngle = placeholder.angle || 0;
+
+      // Scale image to cover the placeholder completely
+      const imgWidth = img.width || 1;
+      const imgHeight = img.height || 1;
+      const scaleX = placeholderWidth / imgWidth;
+      const scaleY = placeholderHeight / imgHeight;
+      const scale = Math.max(scaleX, scaleY); // Cover the placeholder
+
+      // Create a clip path to crop the image to placeholder bounds
+      const clipRect = new fabric.Rect({
+        width: placeholderWidth / scale,
+        height: placeholderHeight / scale,
+        originX: 'center',
+        originY: 'center',
+      });
+
+      img.set({
+        left: placeholderLeft + placeholderWidth / 2,
+        top: placeholderTop + placeholderHeight / 2,
+        originX: 'center',
+        originY: 'center',
+        scaleX: scale,
+        scaleY: scale,
+        angle: placeholderAngle,
+        clipPath: clipRect,
+      });
+
+      const canvas = canvasRef.current as unknown as {
+        add: (obj: unknown) => void;
+        remove: (obj: unknown) => void;
+        setActiveObject: (obj: unknown) => void;
+        renderAll: () => void;
+        getObjects: () => Array<{ isPlaceholder?: boolean }>;
+      };
+
+      // Remove the placeholder and add the image
+      canvas.remove(placeholder);
+      canvas.add(img);
+      canvas.setActiveObject(img);
+      canvas.renderAll();
+
+      // Check if there are any placeholders left
+      const remainingPlaceholders = canvas.getObjects().filter(obj => obj.isPlaceholder === true);
+      if (remainingPlaceholders.length === 0) {
+        setHasPlaceholders(false);
+      }
+    } catch (error) {
+      console.error('Failed to add image to placeholder:', error);
+    }
+
+    // Reset
+    activePlaceholderRef.current = null;
+    e.target.value = '';
+  }, []);
+
+  // Apply a template to the canvas
+  const handleApplyTemplate = useCallback((templateId: TemplateId) => {
+    if (!canvasRef.current || typeof window === 'undefined') return;
+
+    const template = getTemplateById(templateId);
+    if (!template) return;
+
+    // Clear existing placeholders first
+    clearPlaceholders();
+
+    const canvas = canvasRef.current as unknown as {
+      width: number;
+      height: number;
+      add: (obj: unknown) => void;
+      sendObjectToBack: (obj: unknown) => void;
+      renderAll: () => void;
+    };
+
+    // Use the actual canvas dimensions
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+
+    // Generate placeholder rectangles from template
+    const placeholders = template.generate(canvasWidth, canvasHeight);
+
+    // Create Fabric Rect objects for each placeholder
+    placeholders.forEach((placeholder) => {
+      const rect = new fabric.Rect({
+        left: placeholder.left,
+        top: placeholder.top,
+        width: placeholder.width,
+        height: placeholder.height,
+        angle: placeholder.angle || 0,
+        fill: 'rgba(200, 200, 200, 0.2)',
+        stroke: '#999',
+        strokeWidth: 1,
+        strokeDashArray: [5, 5],
+        selectable: true,
+        hoverCursor: 'pointer',
+        // Custom property to identify placeholders
+        isPlaceholder: true,
+      } as fabric.RectProps & { isPlaceholder: boolean; hoverCursor: string });
+
+      // Add click handler to open file picker
+      rect.on('mouseup', () => {
+        handlePlaceholderClick(rect);
+      });
+
+      canvas.add(rect);
+      canvas.sendObjectToBack(rect);
+    });
+
+    canvas.renderAll();
+    setHasPlaceholders(true);
+  }, [clearPlaceholders, handlePlaceholderClick]);
+
   if (!mounted || isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -373,7 +568,7 @@ export default function CollagePage() {
                 </Button>
               </Link>
               <div>
-                <h1 className="font-serif text-lg font-semibold">Vibe Collage</h1>
+                <h1 className="font-serif text-lg font-semibold">Mood Collage</h1>
                 {book && (
                   <p className="text-sm text-muted-foreground">{book.title}</p>
                 )}
@@ -471,6 +666,13 @@ export default function CollagePage() {
                   e.target.value = ''; // Reset to allow selecting same file again
                 }}
               />
+              <input
+                ref={placeholderInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePlaceholderImageUpload}
+              />
 
               <div className="ml-auto">
                 <Button
@@ -506,6 +708,17 @@ export default function CollagePage() {
               exit={{ opacity: 0, x: 20 }}
               className="w-80 space-y-4"
             >
+              {/* Templates */}
+              <Card>
+                <CardContent className="pt-4">
+                  <TemplateSelector
+                    onSelectTemplate={handleApplyTemplate}
+                    onClearTemplate={clearPlaceholders}
+                    hasPlaceholders={hasPlaceholders}
+                  />
+                </CardContent>
+              </Card>
+
               {/* Stickers */}
               <Card>
                 <CardContent className="pt-4">
@@ -532,12 +745,11 @@ export default function CollagePage() {
                 <CardContent className="pt-4">
                   <LayerControls
                     hasSelection={hasSelection}
-                    onBringForward={() => handleLayerAction('bringForward')}
-                    onSendBackward={() => handleLayerAction('sendBackward')}
                     onBringToFront={() => handleLayerAction('bringToFront')}
                     onSendToBack={() => handleLayerAction('sendToBack')}
                     onDelete={() => handleLayerAction('delete')}
                     onDuplicate={() => handleLayerAction('duplicate')}
+                    onClearAll={() => handleLayerAction('clearAll')}
                   />
                 </CardContent>
               </Card>

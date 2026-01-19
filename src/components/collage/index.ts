@@ -3,3 +3,4 @@ export { BackgroundColorPicker } from './BackgroundColorPicker';
 export { LayerControls } from './LayerControls';
 export { CollageCanvas } from './CollageCanvas';
 export { ShapeCropper } from './ShapeCropper';
+export { TemplateSelector } from './TemplateSelector';

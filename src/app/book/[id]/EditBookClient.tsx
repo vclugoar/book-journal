@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronDown, Trash2, Palette, BookOpen } from 'lucide-react';
 import { Button, Card, CardContent, Input, Textarea, SaveIndicator, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
-import { OverallMagic, CozinessLevel, MissedMyStopRisk, RereadLikelihood, Lendability } from '@/components/ratings';
+import { StarRating, OverallMagic, CozinessLevel, MissedMyStopRisk, RereadLikelihood, Lendability } from '@/components/ratings';
 import { SeasonPicker, WeatherPicker, TimeOfDayPicker, ScentTags, RoomPicker, FortuneCookie, QuoteForPillow } from '@/components/prompts';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useAutoSave } from '@/hooks';
@@ -25,7 +25,7 @@ export default function EditBookPage() {
   const [bookData, setBookData] = useState(createEmptyBook());
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<string[]>(['ratings']);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['rating', 'ratings']);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -45,6 +45,7 @@ export default function EditBookPage() {
             author: book.author,
             dateStarted: book.dateStarted,
             dateFinished: book.dateFinished,
+            overallRating: book.overallRating ?? 0,
             ratings: book.ratings,
             prompts: book.prompts,
             coverImage: book.coverImage,
@@ -120,6 +121,19 @@ export default function EditBookPage() {
   };
 
   const sections = [
+    {
+      id: 'rating',
+      title: 'Overall Rating',
+      icon: <span className="text-lg">⭐</span>,
+      content: (
+        <div className="space-y-4">
+          <StarRating
+            value={bookData.overallRating}
+            onChange={(v) => setBookData((prev) => ({ ...prev, overallRating: v }))}
+          />
+        </div>
+      ),
+    },
     {
       id: 'ratings',
       title: 'Whimsical Ratings',
@@ -342,7 +356,7 @@ export default function EditBookPage() {
               <Link href={`/collage/${bookId}`}>
                 <Button variant="secondary">
                   <Palette className="mr-2 h-4 w-4" />
-                  Vibe Collage
+                  Mood Collage
                 </Button>
               </Link>
               <Button
@@ -365,7 +379,7 @@ export default function EditBookPage() {
           <DialogHeader>
             <DialogTitle>Delete Book Entry?</DialogTitle>
             <DialogDescription>
-              This will permanently delete &ldquo;{bookData.title}&rdquo; and its vibe collage. This action cannot be undone.
+              This will permanently delete &ldquo;{bookData.title}&rdquo; and its mood collage. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

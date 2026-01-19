@@ -20,7 +20,7 @@ export default function LandingPage() {
     },
     {
       icon: Palette,
-      title: 'Vibe Collages',
+      title: 'Mood Collages',
       description: 'Build beautiful visual collages that capture the feeling of your favorite reads',
     },
   ];

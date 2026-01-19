@@ -9,12 +9,14 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { BookCard, BookListItem, LibraryControls } from '@/components/library';
 import { GoodreadsImportModal } from '@/components/import';
 import { useBookStore } from '@/stores/bookStore';
-import { getAllBooks } from '@/lib/db';
+import { getAllBooks, getAllCollages, deleteBook, deleteAllBooks } from '@/lib/db';
+import type { Collage } from '@/types';
 
 export default function LibraryPage() {
-  const { books, setBooks, viewMode, getFilteredBooks, setIsLoading, isLoading } = useBookStore();
+  const { books, setBooks, removeBook, viewMode, getFilteredBooks, setIsLoading, isLoading } = useBookStore();
   const [mounted, setMounted] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [collageMap, setCollageMap] = useState<Record<string, Collage>>({});
 
   useEffect(() => {
     setMounted(true);
@@ -23,8 +25,18 @@ export default function LibraryPage() {
   const loadBooks = useCallback(async () => {
     setIsLoading(true);
     try {
-      const loadedBooks = await getAllBooks();
+      const [loadedBooks, loadedCollages] = await Promise.all([
+        getAllBooks(),
+        getAllCollages(),
+      ]);
       setBooks(loadedBooks);
+
+      // Create a map of bookId -> collage for quick lookup
+      const map: Record<string, Collage> = {};
+      loadedCollages.forEach((collage) => {
+        map[collage.bookId] = collage;
+      });
+      setCollageMap(map);
     } catch (error) {
       console.error('Failed to load books:', error);
     } finally {
@@ -35,6 +47,23 @@ export default function LibraryPage() {
   const handleImportComplete = useCallback(() => {
     loadBooks();
   }, [loadBooks]);
+
+  const handleDeleteBook = useCallback(async (id: string) => {
+    await deleteBook(id);
+    removeBook(id);
+    // Update collage map
+    setCollageMap((prev) => {
+      const updated = { ...prev };
+      delete updated[id];
+      return updated;
+    });
+  }, [removeBook]);
+
+  const handleDeleteAllBooks = useCallback(async () => {
+    await deleteAllBooks();
+    setBooks([]);
+    setCollageMap({});
+  }, [setBooks]);
 
   // Load books from IndexedDB
   useEffect(() => {
@@ -106,7 +135,7 @@ export default function LibraryPage() {
         ) : (
           <div className="space-y-6">
             {/* Controls */}
-            <LibraryControls totalBooks={filteredBooks.length} />
+            <LibraryControls totalBooks={filteredBooks.length} onDeleteAll={handleDeleteAllBooks} />
 
             {/* Books */}
             <AnimatePresence mode="wait">
@@ -129,7 +158,13 @@ export default function LibraryPage() {
                   className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
                 >
                   {filteredBooks.map((book, index) => (
-                    <BookCard key={book.id} book={book} index={index} />
+                    <BookCard
+                      key={book.id}
+                      book={book}
+                      index={index}
+                      collageThumbnail={collageMap[book.id]?.thumbnail}
+                      onDelete={handleDeleteBook}
+                    />
                   ))}
                 </motion.div>
               ) : (
@@ -145,12 +180,19 @@ export default function LibraryPage() {
                     <div className="w-12 flex-shrink-0" />
                     <div className="flex-1">Title / Author</div>
                     <div className="hidden sm:block w-24 text-center">Rating</div>
+                    <div className="hidden sm:block w-20">Magic</div>
                     <div className="hidden md:block w-28 text-right">Finished</div>
                     <div className="w-5" />
                   </div>
 
                   {filteredBooks.map((book, index) => (
-                    <BookListItem key={book.id} book={book} index={index} />
+                    <BookListItem
+                      key={book.id}
+                      book={book}
+                      index={index}
+                      collageThumbnail={collageMap[book.id]?.thumbnail}
+                      onDelete={handleDeleteBook}
+                    />
                   ))}
                 </motion.div>
               )}

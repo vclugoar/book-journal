@@ -119,7 +119,7 @@ export const useBookStore = create<BookStore>()(
               comparison = dateA - dateB;
               break;
             case 'rating':
-              comparison = a.ratings.overallMagic - b.ratings.overallMagic;
+              comparison = (a.overallRating ?? 0) - (b.overallRating ?? 0);
               break;
             case 'dateAdded':
             default:

@@ -1,13 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, LayoutGrid, List, ArrowUpDown, ChevronDown } from 'lucide-react';
+import { Search, LayoutGrid, List, ArrowUpDown, ChevronDown, Trash2 } from 'lucide-react';
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import { useBookStore } from '@/stores/bookStore';
 import { cn } from '@/lib/utils';
 import type { SortOption } from '@/types';
 
 interface LibraryControlsProps {
   totalBooks: number;
+  onDeleteAll?: () => void;
 }
 
 const sortOptions: { value: SortOption; label: string }[] = [
@@ -18,13 +21,19 @@ const sortOptions: { value: SortOption; label: string }[] = [
   { value: 'rating', label: 'Magic Level' },
 ];
 
-export function LibraryControls({ totalBooks }: LibraryControlsProps) {
+export function LibraryControls({ totalBooks, onDeleteAll }: LibraryControlsProps) {
   const { viewMode, setViewMode, filter, setSearch, setSortBy, setSortDirection } = useBookStore();
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
 
   const currentSortLabel = sortOptions.find((o) => o.value === filter.sortBy)?.label || 'Date Added';
 
   const toggleSortDirection = () => {
     setSortDirection(filter.sortDirection === 'asc' ? 'desc' : 'asc');
+  };
+
+  const handleDeleteAll = () => {
+    onDeleteAll?.();
+    setShowDeleteAllDialog(false);
   };
 
   return (
@@ -133,10 +142,43 @@ export function LibraryControls({ totalBooks }: LibraryControlsProps) {
         </div>
       </div>
 
-      {/* Results count */}
-      <p className="text-sm text-muted-foreground">
-        {totalBooks} {totalBooks === 1 ? 'book' : 'books'} in your journal
-      </p>
+      {/* Results count and Delete All */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {totalBooks} {totalBooks === 1 ? 'book' : 'books'} in your journal
+        </p>
+        {totalBooks > 0 && onDeleteAll && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDeleteAllDialog(true)}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete All
+          </Button>
+        )}
+      </div>
+
+      {/* Delete All Confirmation Dialog */}
+      <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete All Books?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete all {totalBooks} books and their mood collages. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowDeleteAllDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteAll}>
+              Delete All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

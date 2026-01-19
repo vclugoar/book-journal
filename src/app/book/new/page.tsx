@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronDown, Sparkles, BookOpen, Palette } from 'lucide-react';
 import { Button, Card, CardContent, Input, Textarea, SaveIndicator } from '@/components/ui';
-import { OverallMagic, CozinessLevel, MissedMyStopRisk, RereadLikelihood, Lendability } from '@/components/ratings';
+import { StarRating, OverallMagic, CozinessLevel, MissedMyStopRisk, RereadLikelihood, Lendability } from '@/components/ratings';
 import { SeasonPicker, WeatherPicker, TimeOfDayPicker, ScentTags, RoomPicker, FortuneCookie, QuoteForPillow } from '@/components/prompts';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useAutoSave } from '@/hooks';
@@ -28,7 +28,7 @@ export default function NewBookPage() {
 
   const [bookData, setBookData] = useState(createEmptyBook());
   const [bookId, setBookId] = useState<string | null>(null);
-  const [expandedSections, setExpandedSections] = useState<string[]>(['ratings']);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['rating', 'ratings']);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -91,6 +91,19 @@ export default function NewBookPage() {
   };
 
   const sections: ExpandableSection[] = [
+    {
+      id: 'rating',
+      title: 'Overall Rating',
+      icon: <span className="text-lg">⭐</span>,
+      content: (
+        <div className="space-y-4">
+          <StarRating
+            value={bookData.overallRating}
+            onChange={(v) => setBookData((prev) => ({ ...prev, overallRating: v }))}
+          />
+        </div>
+      ),
+    },
     {
       id: 'ratings',
       title: 'Whimsical Ratings',
@@ -298,7 +311,7 @@ export default function NewBookPage() {
               <Link href={`/collage/${bookId}`}>
                 <Button variant="secondary">
                   <Palette className="mr-2 h-4 w-4" />
-                  Create Vibe Collage
+                  Create Mood Collage
                 </Button>
               </Link>
             )}

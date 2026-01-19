@@ -25,7 +25,8 @@ export interface BookEntry {
   author: string;
   dateStarted: string | null;
   dateFinished: string | null;
-  ratings: BookRatings;
+  overallRating: number; // 0-5 stars (regular rating)
+  ratings: BookRatings; // Whimsical ratings
   prompts: BookPrompts;
   coverImage: string | null; // Base64 or blob URL
   notes: string;
@@ -100,6 +101,7 @@ export const createEmptyBook = (): Omit<BookEntry, 'id' | 'createdAt' | 'updated
   author: '',
   dateStarted: null,
   dateFinished: null,
+  overallRating: 0,
   ratings: { ...defaultRatings },
   prompts: { ...defaultPrompts },
   coverImage: null,
