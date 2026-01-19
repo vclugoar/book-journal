@@ -52,7 +52,12 @@ export async function resizeImage(
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
     img.onload = () => {
+      // Clean up object URL
+      URL.revokeObjectURL(objectUrl);
+
       let { width, height } = img;
 
       if (width > maxWidth || height > maxHeight) {
@@ -86,8 +91,11 @@ export async function resizeImage(
       );
     };
 
-    img.onerror = () => reject(new Error('Failed to load image'));
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to load image'));
+    };
+    img.src = objectUrl;
   });
 }
 
@@ -97,7 +105,11 @@ export async function generateThumbnail(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
     img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
       let { width, height } = img;
       const ratio = Math.min(maxSize / width, maxSize / height);
 
@@ -120,8 +132,11 @@ export async function generateThumbnail(
       resolve(canvas.toDataURL('image/jpeg', 0.7));
     };
 
-    img.onerror = () => reject(new Error('Failed to load image'));
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to load image'));
+    };
+    img.src = objectUrl;
   });
 }
 

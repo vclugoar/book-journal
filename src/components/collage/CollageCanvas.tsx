@@ -168,11 +168,11 @@ export function CollageCanvas({
     >
       <input {...getInputProps()} />
 
-      <canvas ref={canvasRef} />
+      <canvas ref={canvasRef} className={isDragActive ? 'pointer-events-none' : ''} />
 
       {/* Drop overlay */}
       {isDragActive && (
-        <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+        <div className="absolute inset-0 bg-primary/10 flex items-center justify-center pointer-events-none">
           <div className="flex flex-col items-center gap-2 text-primary">
             <ImagePlus className="h-12 w-12" />
             <span className="font-medium">Drop images here</span>

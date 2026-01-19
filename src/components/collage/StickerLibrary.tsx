@@ -51,7 +51,7 @@ export function StickerLibrary({ onSelectSticker }: StickerLibraryProps) {
             title={sticker.name}
           >
             <div
-              className="w-full h-full"
+              className="w-8 h-8 [&>svg]:w-full [&>svg]:h-full"
               dangerouslySetInnerHTML={{ __html: sticker.svg }}
             />
           </motion.button>

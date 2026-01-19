@@ -10,6 +10,9 @@ interface ColorSwatchesProps {
   selectedColor: string;
   onSelectColor: (color: string) => void;
   onUpdatePalette?: (colors: string[]) => void;
+  onApplyToSelection?: (color: string) => void;
+  onSetBackground?: (color: string) => void;
+  hasSelection?: boolean;
 }
 
 const defaultPalettes = [
@@ -26,6 +29,9 @@ export function ColorSwatches({
   selectedColor,
   onSelectColor,
   onUpdatePalette,
+  onApplyToSelection,
+  onSetBackground,
+  hasSelection,
 }: ColorSwatchesProps) {
   const [showPalettes, setShowPalettes] = useState(false);
 
@@ -69,6 +75,32 @@ export function ColorSwatches({
             )}
           </motion.button>
         ))}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-2">
+        {onApplyToSelection && (
+          <button
+            onClick={() => onApplyToSelection(selectedColor)}
+            disabled={!hasSelection}
+            className={cn(
+              'flex-1 text-xs py-1.5 px-2 rounded-md transition-colors',
+              hasSelection
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
+            )}
+          >
+            Apply to Selection
+          </button>
+        )}
+        {onSetBackground && (
+          <button
+            onClick={() => onSetBackground(selectedColor)}
+            className="flex-1 text-xs py-1.5 px-2 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/90 transition-colors"
+          >
+            Set Background
+          </button>
+        )}
       </div>
 
       {/* Palette selector */}
