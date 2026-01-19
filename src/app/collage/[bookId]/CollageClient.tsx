@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
+import * as fabric from 'fabric';
 import {
   ArrowLeft,
   Undo2,
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, CardContent, SaveIndicator } from '@/components/ui';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { StickerLibrary, ColorSwatches, LayerControls, ShapeCropper } from '@/components/collage';
+import { StickerLibrary, BackgroundColorPicker, LayerControls, ShapeCropper } from '@/components/collage';
 import {
   isFabricImage,
   getClipShapeId,
@@ -63,7 +64,6 @@ interface FabricCanvas {
   toJSON: () => unknown;
   toDataURL: (options?: { format?: string; quality?: number }) => string;
   loadFromJSON: (json: unknown, callback: () => void) => void;
-  setBackgroundColor: (color: string, callback: () => void) => void;
   bringForward: (obj: unknown) => void;
   sendBackwards: (obj: unknown) => void;
   bringToFront: (obj: unknown) => void;
@@ -72,13 +72,6 @@ interface FabricCanvas {
   getHeight?: () => number;
 }
 
-interface FabricModule {
-  IText: new (text: string, options: Record<string, unknown>) => unknown;
-  loadSVGFromString: (svg: string, callback: (objects: unknown[], options: unknown) => void) => void;
-  util: {
-    groupSVGElements: (objects: unknown[], options: unknown) => FabricObject;
-  };
-}
 
 export default function CollagePage() {
   const router = useRouter();
@@ -107,7 +100,7 @@ export default function CollagePage() {
   const [currentImageShape, setCurrentImageShape] = useState<ClipShapeId | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const [selectedColor, setSelectedColor] = useState('#FDF6E3');
+  const [backgroundColor, setBackgroundColor] = useState('#FDF6E3');
   const [showSidebar, setShowSidebar] = useState(true);
 
   const canvasRef = useRef<FabricCanvas | null>(null);
@@ -198,30 +191,24 @@ export default function CollagePage() {
   const addText = useCallback(() => {
     if (!canvasRef.current || typeof window === 'undefined') return;
 
-    const fabricModule = (window as unknown as { fabric?: FabricModule }).fabric;
-    if (!fabricModule) return;
-
-    const text = new fabricModule.IText('Double-click to edit', {
+    const text = new fabric.IText('Double-click to edit', {
       left: 100,
       top: 100,
       fontFamily: 'Georgia, serif',
       fontSize: 24,
-      fill: selectedColor === '#FDF6E3' ? '#8B7355' : selectedColor,
+      fill: '#8B7355',
     });
 
     canvasRef.current.add(text);
     canvasRef.current.setActiveObject(text);
     canvasRef.current.renderAll();
-  }, [selectedColor]);
+  }, []);
 
   const addSticker = useCallback((svgString: string) => {
     if (!canvasRef.current || typeof window === 'undefined') return;
 
-    const fabricModule = (window as unknown as { fabric?: FabricModule }).fabric;
-    if (!fabricModule) return;
-
-    fabricModule.loadSVGFromString(svgString, (objects: unknown[], options: unknown) => {
-      const svg = fabricModule.util.groupSVGElements(objects, options);
+    fabric.loadSVGFromString(svgString).then(({ objects, options }) => {
+      const svg = fabric.util.groupSVGElements(objects as fabric.FabricObject[], options);
       svg.set({
         left: 100 + Math.random() * 200,
         top: 100 + Math.random() * 200,
@@ -358,13 +345,12 @@ export default function CollagePage() {
     }
   }, [redo]);
 
-  const updatePalette = useCallback((colors: string[]) => {
-    if (!currentCollage) return;
-    setCurrentCollage({
-      ...currentCollage,
-      colorPalette: colors,
-    });
-  }, [currentCollage, setCurrentCollage]);
+  const handleBackgroundChange = useCallback((color: string) => {
+    if (!canvasRef.current) return;
+    setBackgroundColor(color);
+    (canvasRef.current as unknown as { backgroundColor: string }).backgroundColor = color;
+    canvasRef.current.renderAll();
+  }, []);
 
   if (!mounted || isLoading) {
     return (
@@ -531,14 +517,12 @@ export default function CollagePage() {
                 </CardContent>
               </Card>
 
-              {/* Colors */}
+              {/* Background Color */}
               <Card>
                 <CardContent className="pt-4">
-                  <ColorSwatches
-                    colors={currentCollage?.colorPalette || ['#FDF6E3', '#D4A5A5', '#9CAF88', '#E6C068', '#8B7355']}
-                    selectedColor={selectedColor}
-                    onSelectColor={setSelectedColor}
-                    onUpdatePalette={updatePalette}
+                  <BackgroundColorPicker
+                    currentColor={backgroundColor}
+                    onColorChange={handleBackgroundChange}
                   />
                 </CardContent>
               </Card>
