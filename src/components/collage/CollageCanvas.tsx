@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
 import * as fabric from 'fabric';
 import { useDropzone } from 'react-dropzone';
 import { ImagePlus } from 'lucide-react';
@@ -9,21 +9,28 @@ import { useUndoRedo } from '@/hooks';
 import { resizeImage } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
+export interface CollageCanvasHandle {
+  addImages: (files: FileList | File[]) => Promise<void>;
+  getCanvas: () => fabric.Canvas | null;
+}
+
 interface CollageCanvasProps {
   onCanvasReady: (canvas: fabric.Canvas) => void;
   onObjectSelected: (selected: boolean) => void;
   onCanvasChange: () => void;
+  onAddImagesReady?: (addImages: (files: FileList | File[]) => Promise<void>) => void;
   width?: number;
   height?: number;
 }
 
-export function CollageCanvas({
+export const CollageCanvas = forwardRef<CollageCanvasHandle, CollageCanvasProps>(function CollageCanvas({
   onCanvasReady,
   onObjectSelected,
   onCanvasChange,
+  onAddImagesReady,
   width = 800,
   height = 600,
-}: CollageCanvasProps) {
+}, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -79,7 +86,10 @@ export function CollageCanvas({
 
     function saveState() {
       if (fabricRef.current) {
-        const json = JSON.stringify(fabricRef.current.toJSON());
+        // Include clipShapeId custom property in serialization
+        const json = JSON.stringify(
+          (fabricRef.current as unknown as { toJSON: (props: string[]) => unknown }).toJSON(['clipShapeId'])
+        );
         pushHistory(json);
       }
     }
@@ -106,49 +116,75 @@ export function CollageCanvas({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle image drop
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (!fabricRef.current) return;
+  // Handle image adding (used by both drop and button)
+  const addImagesToCanvas = useCallback(async (files: FileList | File[]) => {
+    const canvas = fabricRef.current;
+    if (!canvas || !isReady) return;
 
-    for (const file of acceptedFiles) {
+    const fileArray = Array.from(files);
+
+    for (const file of fileArray) {
+      // Skip non-image files
+      if (file instanceof File && !file.type.startsWith('image/')) continue;
+
       try {
-        const resized = await resizeImage(file, 800, 800);
-        const reader = new FileReader();
+        const resized = await resizeImage(file as File, 800, 800);
 
-        reader.onload = async (e) => {
-          const dataUrl = e.target?.result as string;
+        // Convert blob to data URL
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(resized);
+        });
 
-          try {
-            const img = await fabric.FabricImage.fromURL(dataUrl);
-            if (!fabricRef.current) return;
+        // Check canvas is still valid
+        if (!fabricRef.current) return;
 
-            // Scale down if too large
-            const maxSize = 300;
-            if (img.width && img.height) {
-              const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
-              img.scale(scale);
-            }
+        const img = await fabric.FabricImage.fromURL(dataUrl);
 
-            // Center the image
-            img.set({
-              left: (width - (img.getScaledWidth() || 0)) / 2,
-              top: (height - (img.getScaledHeight() || 0)) / 2,
-            });
+        // Final check before adding
+        if (!fabricRef.current) return;
 
-            fabricRef.current.add(img);
-            fabricRef.current.setActiveObject(img);
-            fabricRef.current.renderAll();
-          } catch (imgError) {
-            console.error('Failed to create image:', imgError);
-          }
-        };
+        // Scale down if too large
+        const maxSize = 300;
+        if (img.width && img.height) {
+          const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+          img.scale(scale);
+        }
 
-        reader.readAsDataURL(resized);
+        // Center the image
+        img.set({
+          left: (width - (img.getScaledWidth() || 0)) / 2,
+          top: (height - (img.getScaledHeight() || 0)) / 2,
+        });
+
+        fabricRef.current.add(img);
+        fabricRef.current.setActiveObject(img);
+        fabricRef.current.renderAll();
       } catch (error) {
         console.error('Failed to add image:', error);
       }
     }
-  }, [width, height]);
+  }, [width, height, isReady]);
+
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    addImages: addImagesToCanvas,
+    getCanvas: () => fabricRef.current,
+  }), [addImagesToCanvas]);
+
+  // Notify parent when addImages function is ready
+  useEffect(() => {
+    if (isReady && onAddImagesReady) {
+      onAddImagesReady(addImagesToCanvas);
+    }
+  }, [isReady, onAddImagesReady, addImagesToCanvas]);
+
+  // Handle image drop
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    await addImagesToCanvas(acceptedFiles);
+  }, [addImagesToCanvas]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -181,4 +217,4 @@ export function CollageCanvas({
       )}
     </div>
   );
-}
+});

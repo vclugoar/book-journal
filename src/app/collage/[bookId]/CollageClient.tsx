@@ -17,7 +17,14 @@ import {
 } from 'lucide-react';
 import { Button, Card, CardContent, SaveIndicator } from '@/components/ui';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { StickerLibrary, ColorSwatches, LayerControls } from '@/components/collage';
+import { StickerLibrary, ColorSwatches, LayerControls, ShapeCropper } from '@/components/collage';
+import {
+  isFabricImage,
+  getClipShapeId,
+  applyClipPathToImage,
+  removeClipPathFromImage,
+  type ClipShapeId,
+} from '@/lib/fabric/clipShapes';
 import { useCollageStore } from '@/stores/collageStore';
 import { useAutoSave } from '@/hooks';
 import { getBook, getCollageByBookId, createCollage, updateCollage } from '@/lib/db';
@@ -29,6 +36,7 @@ const CollageCanvas = dynamic(
   () => import('@/components/collage/CollageCanvas').then((mod) => mod.CollageCanvas),
   { ssr: false, loading: () => <CanvasPlaceholder /> }
 );
+
 
 function CanvasPlaceholder() {
   return (
@@ -60,6 +68,8 @@ interface FabricCanvas {
   sendBackwards: (obj: unknown) => void;
   bringToFront: (obj: unknown) => void;
   sendToBack: (obj: unknown) => void;
+  getWidth?: () => number;
+  getHeight?: () => number;
 }
 
 interface FabricModule {
@@ -93,12 +103,15 @@ export default function CollagePage() {
 
   const [book, setBook] = useState<BookEntry | null>(null);
   const [hasSelection, setHasSelection] = useState(false);
+  const [hasImageSelection, setHasImageSelection] = useState(false);
+  const [currentImageShape, setCurrentImageShape] = useState<ClipShapeId | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#FDF6E3');
   const [showSidebar, setShowSidebar] = useState(true);
 
   const canvasRef = useRef<FabricCanvas | null>(null);
+  const addImagesRef = useRef<((files: FileList | File[]) => Promise<void>) | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -174,7 +187,10 @@ export default function CollagePage() {
 
   const handleCanvasChange = useCallback(() => {
     if (canvasRef.current) {
-      const json = JSON.stringify(canvasRef.current.toJSON());
+      // Include clipShapeId custom property in serialization
+      const json = JSON.stringify(
+        (canvasRef.current as unknown as { toJSON: (props: string[]) => unknown }).toJSON(['clipShapeId'])
+      );
       updateCanvasJSON(json);
     }
   }, [updateCanvasJSON]);
@@ -219,6 +235,11 @@ export default function CollagePage() {
     });
   }, []);
 
+  const addImages = useCallback(async (files: FileList | null) => {
+    if (!files || !addImagesRef.current) return;
+    await addImagesRef.current(files);
+  }, []);
+
   const handleLayerAction = useCallback((action: string) => {
     if (!canvasRef.current) return;
 
@@ -250,6 +271,58 @@ export default function CollagePage() {
         });
         break;
     }
+    canvasRef.current.renderAll();
+  }, []);
+
+  // Handle object selection to detect image and its shape
+  const handleObjectSelected = useCallback((selected: boolean) => {
+    setHasSelection(selected);
+
+    if (!selected || !canvasRef.current) {
+      setHasImageSelection(false);
+      setCurrentImageShape(null);
+      return;
+    }
+
+    const activeObj = canvasRef.current.getActiveObject();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const isImage = isFabricImage(activeObj as any);
+    setHasImageSelection(isImage);
+
+    if (isImage) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const shapeId = getClipShapeId(activeObj as any);
+      setCurrentImageShape(shapeId);
+    } else {
+      setCurrentImageShape(null);
+    }
+  }, []);
+
+  // Apply a shape to the selected image
+  const handleApplyShape = useCallback((shapeId: ClipShapeId) => {
+    if (!canvasRef.current) return;
+
+    const activeObj = canvasRef.current.getActiveObject();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!isFabricImage(activeObj as any)) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    applyClipPathToImage(activeObj as any, shapeId);
+    setCurrentImageShape(shapeId);
+    canvasRef.current.renderAll();
+  }, []);
+
+  // Remove shape from the selected image
+  const handleRemoveShape = useCallback(() => {
+    if (!canvasRef.current) return;
+
+    const activeObj = canvasRef.current.getActiveObject();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!isFabricImage(activeObj as any)) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    removeClipPathFromImage(activeObj as any);
+    setCurrentImageShape(null);
     canvasRef.current.renderAll();
   }, []);
 
@@ -407,8 +480,9 @@ export default function CollagePage() {
                 accept="image/*"
                 multiple
                 className="hidden"
-                onChange={() => {
-                  // File handling is done via drag-drop in the canvas
+                onChange={(e) => {
+                  addImages(e.target.files);
+                  e.target.value = ''; // Reset to allow selecting same file again
                 }}
               />
 
@@ -426,8 +500,9 @@ export default function CollagePage() {
             {/* Canvas */}
             <CollageCanvas
               onCanvasReady={handleCanvasReady}
-              onObjectSelected={setHasSelection}
+              onObjectSelected={handleObjectSelected}
               onCanvasChange={handleCanvasChange}
+              onAddImagesReady={(fn) => { addImagesRef.current = fn; }}
               width={showSidebar ? 800 : 1000}
               height={600}
             />
@@ -479,6 +554,18 @@ export default function CollagePage() {
                     onSendToBack={() => handleLayerAction('sendToBack')}
                     onDelete={() => handleLayerAction('delete')}
                     onDuplicate={() => handleLayerAction('duplicate')}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Shape Cropper */}
+              <Card>
+                <CardContent className="pt-4">
+                  <ShapeCropper
+                    hasImageSelected={hasImageSelection}
+                    currentShape={currentImageShape}
+                    onApplyShape={handleApplyShape}
+                    onRemoveShape={handleRemoveShape}
                   />
                 </CardContent>
               </Card>
