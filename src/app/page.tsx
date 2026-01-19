@@ -26,7 +26,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background paper-texture">
+    <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
