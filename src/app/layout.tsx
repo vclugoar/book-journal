@@ -18,7 +18,7 @@ const sansFont = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: 'Reading Journal',
+  title: 'Moodmark',
   description: 'A whimsical journal to capture the feeling of your reading adventures',
 };
 

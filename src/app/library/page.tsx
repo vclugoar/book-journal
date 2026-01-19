@@ -51,7 +51,7 @@ export default function LibraryPage() {
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-2">
               <BookOpen className="h-6 w-6 text-sage" />
-              <span className="font-serif text-lg font-semibold">Reading Journal</span>
+              <span className="font-serif text-lg font-semibold">Moodmark</span>
             </Link>
             <div className="flex items-center gap-4">
               <ThemeToggle />
