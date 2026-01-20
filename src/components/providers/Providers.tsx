@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useUIStore } from '@/stores/uiStore';
+import { ToastContainer } from '@/components/ui';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -50,5 +51,10 @@ export function Providers({ children }: ProvidersProps) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <ToastContainer />
+    </>
+  );
 }

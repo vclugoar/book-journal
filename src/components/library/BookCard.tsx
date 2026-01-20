@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Star, Sparkles, BookOpen, Trash2 } from 'lucide-react';
+import { Star, Sparkles, BookOpen, Trash2, Palette } from 'lucide-react';
 import { Card, Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import { formatDate, getBookPersonality, cn } from '@/lib/utils';
 import type { BookEntry } from '@/types';
@@ -47,12 +47,21 @@ export function BookCard({ book, index = 0, collageThumbnail, onDelete }: BookCa
           {/* Collage thumbnail or book cover */}
           <div
             className={cn(
-              'h-32 rounded-lg mb-4 flex items-center justify-center overflow-hidden',
+              'h-32 rounded-lg mb-4 flex items-center justify-center overflow-hidden relative',
               'bg-gradient-to-br from-sage/20 via-golden/10 to-rose/20',
               'group-hover:from-sage/30 group-hover:via-golden/20 group-hover:to-rose/30',
               'transition-all duration-300'
             )}
           >
+            {/* Has Collage Badge */}
+            {collageThumbnail && (
+              <div
+                className="absolute top-2 left-2 z-10 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-background/80 backdrop-blur-sm text-xs text-muted-foreground"
+                title="Has mood collage"
+              >
+                <Palette className="h-3 w-3" />
+              </div>
+            )}
             {displayImage ? (
               <img
                 src={displayImage}

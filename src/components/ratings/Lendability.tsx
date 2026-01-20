@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, HeartCrack, Gift, HandHeart } from 'lucide-react';
+import { Heart, HeartCrack, Gift, HandHeart, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BookRatings } from '@/types';
 
@@ -60,7 +60,12 @@ export function Lendability({ value, onChange, label = 'Would You Lend It?' }: L
 
   return (
     <div className="space-y-3">
-      <label className="text-sm font-medium text-foreground">{label}</label>
+      <label className="text-sm font-medium text-foreground flex items-center gap-1">
+        {label}
+        <span title="How willing are you to share this book?">
+          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+        </span>
+      </label>
 
       <div className="grid grid-cols-2 gap-3">
         {options.map((option) => {

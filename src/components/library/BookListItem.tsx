@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Star, Sparkles, BookOpen, ChevronRight, Trash2 } from 'lucide-react';
+import { Star, Sparkles, BookOpen, ChevronRight, Trash2, Palette } from 'lucide-react';
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import { formatDate, getBookPersonality, cn } from '@/lib/utils';
 import type { BookEntry } from '@/types';
@@ -53,10 +53,19 @@ export function BookListItem({ book, index = 0, collageThumbnail, onDelete }: Bo
           {/* Collage thumbnail or book cover */}
           <div
             className={cn(
-              'w-12 h-16 rounded flex-shrink-0 flex items-center justify-center overflow-hidden',
+              'w-12 h-16 rounded flex-shrink-0 flex items-center justify-center overflow-hidden relative',
               'bg-gradient-to-br from-sage/20 via-golden/10 to-rose/20'
             )}
           >
+            {/* Has Collage Badge */}
+            {collageThumbnail && (
+              <div
+                className="absolute top-0.5 left-0.5 z-10 p-0.5 rounded bg-background/80 backdrop-blur-sm"
+                title="Has mood collage"
+              >
+                <Palette className="h-2.5 w-2.5 text-muted-foreground" />
+              </div>
+            )}
             {displayImage ? (
               <img
                 src={displayImage}

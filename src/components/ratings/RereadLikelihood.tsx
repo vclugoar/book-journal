@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RereadLikelihoodProps {
@@ -28,7 +28,12 @@ export function RereadLikelihood({ value, onChange, label = 'Reread Likelihood' 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-foreground">{label}</label>
+        <label className="text-sm font-medium text-foreground flex items-center gap-1">
+          {label}
+          <span title="How likely are you to pick this up again?">
+            <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+          </span>
+        </label>
         <span className="text-sm text-muted-foreground italic">
           {descriptions[displayValue]}
         </span>

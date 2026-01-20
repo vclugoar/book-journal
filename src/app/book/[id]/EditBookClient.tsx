@@ -8,7 +8,7 @@ import { ArrowLeft, ChevronDown, Trash2, Palette, BookOpen, PartyPopper } from '
 import { celebrateBookCompletion } from '@/lib/confetti';
 import { Button, Card, CardContent, Input, Textarea, SaveIndicator, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import { StarRating, OverallMagic, CozinessLevel, MissedMyStopRisk, RereadLikelihood, Lendability } from '@/components/ratings';
-import { SeasonPicker, WeatherPicker, TimeOfDayPicker, ScentTags, RoomPicker, FortuneCookie, QuoteForPillow } from '@/components/prompts';
+import { SeasonPicker, WeatherPicker, TimeOfDayPicker, ScentTags, RoomPicker, FortuneCookie, QuoteForPillow, SuitcaseItems, ReadingLocation } from '@/components/prompts';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useAutoSave } from '@/hooks';
 import { getBook, updateBook, deleteBook } from '@/lib/db';
@@ -206,6 +206,10 @@ export default function EditBookPage() {
             value={bookData.prompts.scents}
             onChange={(v) => updatePrompts('scents', v)}
           />
+          <ReadingLocation
+            value={bookData.prompts.readingLocation}
+            onChange={(v) => updatePrompts('readingLocation', v)}
+          />
         </div>
       ),
     },
@@ -218,6 +222,10 @@ export default function EditBookPage() {
           <RoomPicker
             value={bookData.prompts.roomInHouse}
             onChange={(v) => updatePrompts('roomInHouse', v)}
+          />
+          <SuitcaseItems
+            value={bookData.prompts.suitcaseItems}
+            onChange={(v) => updatePrompts('suitcaseItems', v)}
           />
           <FortuneCookie
             value={bookData.prompts.fortuneCookieMessage}

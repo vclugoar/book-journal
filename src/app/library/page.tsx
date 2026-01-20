@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, BookOpen, Sparkles, Upload } from 'lucide-react';
+import { Plus, BookOpen, Sparkles } from 'lucide-react';
 
 const cozyMessages = [
   "Your reading nook awaits...",
@@ -15,16 +15,22 @@ const cozyMessages = [
 import { Button } from '@/components/ui';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { BookCard, BookListItem, LibraryControls } from '@/components/library';
-import { GoodreadsImportModal } from '@/components/import';
+import { GoodreadsImportModal, BackupImportModal, ImportDropdown } from '@/components/import';
+import { ExportDropdown } from '@/components/export';
 import { useBookStore } from '@/stores/bookStore';
+import { useUIStore } from '@/stores/uiStore';
 import { getAllBooks, getAllCollages, deleteBook, deleteAllBooks } from '@/lib/db';
+import { exportLibraryAsJSON, exportLibraryAsCSV } from '@/lib/export';
 import type { Collage } from '@/types';
 
 export default function LibraryPage() {
   const { books, setBooks, removeBook, viewMode, getFilteredBooks, setIsLoading, isLoading } = useBookStore();
+  const addToast = useUIStore((state) => state.addToast);
   const [mounted, setMounted] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [backupModalOpen, setBackupModalOpen] = useState(false);
   const [collageMap, setCollageMap] = useState<Record<string, Collage>>({});
+  const [allCollages, setAllCollages] = useState<Collage[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -38,6 +44,7 @@ export default function LibraryPage() {
         getAllCollages(),
       ]);
       setBooks(loadedBooks);
+      setAllCollages(loadedCollages);
 
       // Create a map of bookId -> collage for quick lookup
       const map: Record<string, Collage> = {};
@@ -57,6 +64,7 @@ export default function LibraryPage() {
   }, [loadBooks]);
 
   const handleDeleteBook = useCallback(async (id: string) => {
+    const bookToDelete = books.find((b) => b.id === id);
     await deleteBook(id);
     removeBook(id);
     // Update collage map
@@ -65,13 +73,39 @@ export default function LibraryPage() {
       delete updated[id];
       return updated;
     });
-  }, [removeBook]);
+    addToast({
+      type: 'success',
+      message: bookToDelete ? `Deleted "${bookToDelete.title}"` : 'Book deleted',
+    });
+  }, [books, removeBook, addToast]);
 
   const handleDeleteAllBooks = useCallback(async () => {
+    const count = books.length;
     await deleteAllBooks();
     setBooks([]);
     setCollageMap({});
-  }, [setBooks]);
+    setAllCollages([]);
+    addToast({
+      type: 'success',
+      message: `Deleted ${count} books from library`,
+    });
+  }, [books, setBooks, addToast]);
+
+  const handleExportJSON = useCallback(() => {
+    exportLibraryAsJSON(books, allCollages);
+    addToast({
+      type: 'success',
+      message: `Exported ${books.length} books as JSON backup`,
+    });
+  }, [books, allCollages, addToast]);
+
+  const handleExportCSV = useCallback(() => {
+    exportLibraryAsCSV(books);
+    addToast({
+      type: 'success',
+      message: `Exported ${books.length} books as CSV`,
+    });
+  }, [books, addToast]);
 
   // Load books from IndexedDB
   useEffect(() => {
@@ -96,12 +130,17 @@ export default function LibraryPage() {
               <BookOpen className="h-6 w-6 text-sage" />
               <span className="font-serif text-lg font-semibold">Moodmark</span>
             </Link>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <ThemeToggle />
-              <Button variant="outline" onClick={() => setImportModalOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                Import
-              </Button>
+              <ExportDropdown
+                onExportJSON={handleExportJSON}
+                onExportCSV={handleExportCSV}
+                disabled={books.length === 0}
+              />
+              <ImportDropdown
+                onImportGoodreads={() => setImportModalOpen(true)}
+                onRestoreBackup={() => setBackupModalOpen(true)}
+              />
               <Link href="/book/new">
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
@@ -197,12 +236,31 @@ export default function LibraryPage() {
               {filteredBooks.length === 0 ? (
                 <motion.div
                   key="no-results"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-center py-12"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="text-center py-16"
                 >
-                  <p className="text-muted-foreground">No books match your search.</p>
+                  <motion.span
+                    className="text-4xl inline-block mb-4"
+                    animate={{
+                      rotate: [0, -10, 10, -10, 0],
+                      y: [0, -5, 0]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      repeatDelay: 1
+                    }}
+                  >
+                    🔍
+                  </motion.span>
+                  <p className="font-serif text-lg text-foreground mb-2">
+                    No stories found in this corner...
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Try a different search or explore your full collection
+                  </p>
                 </motion.div>
               ) : viewMode === 'grid' ? (
                 <motion.div
@@ -259,6 +317,12 @@ export default function LibraryPage() {
       <GoodreadsImportModal
         open={importModalOpen}
         onOpenChange={setImportModalOpen}
+        onImportComplete={handleImportComplete}
+      />
+
+      <BackupImportModal
+        open={backupModalOpen}
+        onOpenChange={setBackupModalOpen}
         onImportComplete={handleImportComplete}
       />
     </div>

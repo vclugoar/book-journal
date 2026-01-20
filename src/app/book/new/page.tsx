@@ -4,11 +4,11 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ChevronDown, Sparkles, BookOpen, Palette, PartyPopper } from 'lucide-react';
+import { ArrowLeft, ChevronDown, BookOpen, Palette, PartyPopper } from 'lucide-react';
 import { celebrateBookCompletion } from '@/lib/confetti';
 import { Button, Card, CardContent, Input, Textarea, SaveIndicator } from '@/components/ui';
 import { StarRating, OverallMagic, CozinessLevel, MissedMyStopRisk, RereadLikelihood, Lendability } from '@/components/ratings';
-import { SeasonPicker, WeatherPicker, TimeOfDayPicker, ScentTags, RoomPicker, FortuneCookie, QuoteForPillow } from '@/components/prompts';
+import { SeasonPicker, WeatherPicker, TimeOfDayPicker, ScentTags, RoomPicker, FortuneCookie, QuoteForPillow, SuitcaseItems, ReadingLocation } from '@/components/prompts';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useAutoSave } from '@/hooks';
 import { createBook, updateBook } from '@/lib/db';
@@ -126,7 +126,7 @@ export default function NewBookPage() {
     {
       id: 'ratings',
       title: 'Whimsical Ratings',
-      icon: <Sparkles className="h-5 w-5" />,
+      icon: <span className="text-lg">✨</span>,
       content: (
         <div className="space-y-8">
           <OverallMagic
@@ -174,6 +174,10 @@ export default function NewBookPage() {
             value={bookData.prompts.scents}
             onChange={(v) => updatePrompts('scents', v)}
           />
+          <ReadingLocation
+            value={bookData.prompts.readingLocation}
+            onChange={(v) => updatePrompts('readingLocation', v)}
+          />
         </div>
       ),
     },
@@ -186,6 +190,10 @@ export default function NewBookPage() {
           <RoomPicker
             value={bookData.prompts.roomInHouse}
             onChange={(v) => updatePrompts('roomInHouse', v)}
+          />
+          <SuitcaseItems
+            value={bookData.prompts.suitcaseItems}
+            onChange={(v) => updatePrompts('suitcaseItems', v)}
           />
           <FortuneCookie
             value={bookData.prompts.fortuneCookieMessage}

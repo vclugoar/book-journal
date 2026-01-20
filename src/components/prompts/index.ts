@@ -5,3 +5,5 @@ export { ScentTags } from './ScentTags';
 export { RoomPicker } from './RoomPicker';
 export { FortuneCookie } from './FortuneCookie';
 export { QuoteForPillow } from './QuoteForPillow';
+export { SuitcaseItems } from './SuitcaseItems';
+export { ReadingLocation } from './ReadingLocation';

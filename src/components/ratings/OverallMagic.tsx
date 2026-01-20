@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface OverallMagicProps {
@@ -37,7 +37,12 @@ export function OverallMagic({ value, onChange, label = 'Overall Magic' }: Overa
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-foreground">{label}</label>
+        <label className="text-sm font-medium text-foreground flex items-center gap-1">
+          {label}
+          <span title="How enchanting was this book? Did it cast a spell on you?">
+            <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+          </span>
+        </label>
         <span className="text-sm text-muted-foreground italic">
           {descriptions[displayValue]}
         </span>

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { TrainFront, AlertTriangle } from 'lucide-react';
+import { TrainFront, AlertTriangle, HelpCircle } from 'lucide-react';
 import { Slider } from '@/components/ui/Slider';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +31,12 @@ export function MissedMyStopRisk({ value, onChange, label = 'Missed My Stop Risk
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-foreground">{label}</label>
+        <label className="text-sm font-medium text-foreground flex items-center gap-1">
+          {label}
+          <span title="How absorbing was it? Would you miss your train stop?">
+            <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+          </span>
+        </label>
         <span className="text-sm text-muted-foreground italic">{getDescription(value)}</span>
       </div>
 
