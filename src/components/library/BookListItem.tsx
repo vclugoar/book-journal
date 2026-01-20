@@ -100,7 +100,7 @@ export function BookListItem({ book, index = 0, collageThumbnail, onDelete }: Bo
             {magicLevel > 0 ? (
               <span>{magicLevel}/5</span>
             ) : (
-              <span className="italic">N/A</span>
+              <span className="italic">No sparkle yet</span>
             )}
           </div>
 

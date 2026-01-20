@@ -90,7 +90,7 @@ export function BookCard({ book, index = 0, collageThumbnail, onDelete }: BookCa
               {magicLevel > 0 ? (
                 <span>{magicLevel}/5 magic</span>
               ) : (
-                <span className="italic">Not added</span>
+                <span className="italic">No sparkle yet</span>
               )}
             </div>
 
