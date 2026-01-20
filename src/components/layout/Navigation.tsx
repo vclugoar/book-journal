@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Menu, X, Home, Library, Palette, Info, Settings } from 'lucide-react';
+import { BookOpen, Menu, Home, Library, Palette, Info, Settings } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useAuth, UserMenu } from '@/components/auth';
 import { cn } from '@/lib/utils';
@@ -16,9 +16,14 @@ interface NavItem {
   description?: string;
 }
 
-const navItems: NavItem[] = [
-  { label: 'Home', href: '/', icon: Home, description: 'Welcome page' },
-  { label: 'Library', href: '/library', icon: Library, description: 'Your book collection' },
+// Always visible in the main nav bar
+const primaryNavItems: NavItem[] = [
+  { label: 'Home', href: '/', icon: Home },
+  { label: 'Library', href: '/library', icon: Library },
+];
+
+// Hidden in hamburger menu
+const menuNavItems: NavItem[] = [
   { label: 'Create Collage', href: '/library', icon: Palette, description: 'Make a mood collage' },
   { label: 'About', href: '/about', icon: Info, description: 'About Moodmark' },
   { label: 'Settings', href: '/settings', icon: Settings, description: 'Preferences' },
@@ -32,12 +37,18 @@ interface NavigationProps {
 export function Navigation({ children, showUserMenu = true }: NavigationProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
   const { user } = useAuth();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsMenuOpen(false);
       }
     };
@@ -61,9 +72,9 @@ export function Navigation({ children, showUserMenu = true }: NavigationProps) {
             <span className="font-serif text-lg font-semibold">Moodmark</span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => {
+          {/* Primary Navigation - Always visible */}
+          <nav className="flex items-center gap-1">
+            {primaryNavItems.map((item) => {
               const isActive = pathname === item.href ||
                 (item.href !== '/' && pathname.startsWith(item.href));
 
@@ -79,90 +90,89 @@ export function Navigation({ children, showUserMenu = true }: NavigationProps) {
                   )}
                 >
                   <item.icon className="h-4 w-4" />
-                  {item.label}
+                  <span className="hidden sm:inline">{item.label}</span>
                 </Link>
               );
             })}
           </nav>
 
           {/* Right side actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ThemeToggle />
-
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Additional actions passed as children */}
             {children}
 
-            {/* User menu (desktop) */}
+            {/* User menu */}
             {showUserMenu && user && (
-              <div className="hidden md:block">
-                <UserMenu />
-              </div>
+              <UserMenu />
             )}
 
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
+            {/* Hamburger menu button */}
+            <div className="relative">
+              <button
+                ref={buttonRef}
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className={cn(
+                  'p-2 rounded-lg transition-colors',
+                  isMenuOpen ? 'bg-muted' : 'hover:bg-muted'
+                )}
+                aria-label="Toggle menu"
+              >
                 <Menu className="h-5 w-5" />
-              )}
-            </button>
+              </button>
+
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                {isMenuOpen && (
+                  <motion.div
+                    ref={menuRef}
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-56 rounded-lg bg-card border border-border shadow-lg overflow-hidden z-50"
+                  >
+                    <nav className="py-2">
+                      {menuNavItems.map((item) => {
+                        const isActive = pathname === item.href ||
+                          (item.href !== '/' && pathname.startsWith(item.href));
+
+                        return (
+                          <Link
+                            key={item.label}
+                            href={item.href}
+                            className={cn(
+                              'flex items-center gap-3 px-4 py-3 transition-colors',
+                              isActive
+                                ? 'bg-sage/10 text-sage'
+                                : 'text-foreground hover:bg-muted'
+                            )}
+                          >
+                            <item.icon className="h-5 w-5" />
+                            <div>
+                              <div className="font-medium text-sm">{item.label}</div>
+                              {item.description && (
+                                <div className="text-xs text-muted-foreground">{item.description}</div>
+                              )}
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </nav>
+
+                    {/* Theme Toggle */}
+                    <div className="border-t border-border px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Theme</span>
+                        <ThemeToggle />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            ref={menuRef}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden border-t border-border bg-background overflow-hidden"
-          >
-            <nav className="max-w-6xl mx-auto px-4 py-4 space-y-1">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href ||
-                  (item.href !== '/' && pathname.startsWith(item.href));
-
-                return (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
-                      isActive
-                        ? 'bg-sage/10 text-sage'
-                        : 'text-foreground hover:bg-muted'
-                    )}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <div>
-                      <div className="font-medium">{item.label}</div>
-                      {item.description && (
-                        <div className="text-xs text-muted-foreground">{item.description}</div>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-
-              {/* User section in mobile menu */}
-              {showUserMenu && user && (
-                <div className="pt-4 mt-4 border-t border-border">
-                  <UserMenu />
-                </div>
-              )}
-            </nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </header>
   );
 }
