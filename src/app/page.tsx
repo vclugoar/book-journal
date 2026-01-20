@@ -1,12 +1,25 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { BookOpen, Sparkles, Heart, Palette } from 'lucide-react';
+import { BookOpen, Sparkles, Heart, Palette, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useAuth } from '@/components/auth';
 
 export default function LandingPage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  // Redirect to library if already logged in
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.push('/library');
+    }
+  }, [user, isLoading, router]);
+
   const features = [
     {
       icon: Sparkles,
@@ -37,11 +50,27 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-4">
               <ThemeToggle />
-              <Link href="/library">
-                <Button variant="primary" size="sm">
-                  Open Journal
-                </Button>
-              </Link>
+              {user ? (
+                <Link href="/library">
+                  <Button variant="primary" size="sm">
+                    Open Journal
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login">
+                    <Button variant="ghost" size="sm">
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/signup">
+                    <Button variant="primary" size="sm">
+                      Get Started
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -66,18 +95,37 @@ export default function LandingPage() {
               Capture the feeling of every book through whimsical prompts and beautiful collages.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/library">
-                <Button size="lg" className="w-full sm:w-auto">
-                  <BookOpen className="mr-2 h-5 w-5" />
-                  Start Your Journal
-                </Button>
-              </Link>
-              <Link href="/book/new">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Add Your First Book
-                </Button>
-              </Link>
+              {user ? (
+                <>
+                  <Link href="/library">
+                    <Button size="lg" className="w-full sm:w-auto">
+                      <BookOpen className="mr-2 h-5 w-5" />
+                      Open Your Journal
+                    </Button>
+                  </Link>
+                  <Link href="/book/new">
+                    <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                      <Sparkles className="mr-2 h-5 w-5" />
+                      Add a Book
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/signup">
+                    <Button size="lg" className="w-full sm:w-auto">
+                      <Sparkles className="mr-2 h-5 w-5" />
+                      Get Started Free
+                    </Button>
+                  </Link>
+                  <Link href="/login">
+                    <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                      <LogIn className="mr-2 h-5 w-5" />
+                      Sign In
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </motion.div>
 
@@ -114,8 +162,8 @@ export default function LandingPage() {
               className="text-center"
             >
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground text-sm">
-                <span>Your data stays on your device</span>
-                <span className="text-sage">Local-first privacy</span>
+                <span>Works offline, syncs across devices</span>
+                <span className="text-sage">Cloud-enabled</span>
               </div>
             </motion.div>
           </div>

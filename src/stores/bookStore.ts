@@ -11,6 +11,9 @@ interface BookStore {
   isLoading: boolean;
   isSaving: boolean;
   lastSaved: string | null;
+  userId: string | null;
+  isSyncing: boolean;
+  lastSyncTime: string | null;
 
   // Actions
   setBooks: (books: BookEntry[]) => void;
@@ -25,6 +28,9 @@ interface BookStore {
   setIsLoading: (loading: boolean) => void;
   setIsSaving: (saving: boolean) => void;
   setLastSaved: (timestamp: string | null) => void;
+  setUserId: (userId: string | null) => void;
+  setIsSyncing: (syncing: boolean) => void;
+  setLastSyncTime: (timestamp: string | null) => void;
 
   // Computed
   getFilteredBooks: () => BookEntry[];
@@ -46,6 +52,9 @@ export const useBookStore = create<BookStore>()(
       isLoading: false,
       isSaving: false,
       lastSaved: null,
+      userId: null,
+      isSyncing: false,
+      lastSyncTime: null,
 
       // Actions
       setBooks: (books) => set({ books }),
@@ -86,6 +95,12 @@ export const useBookStore = create<BookStore>()(
       setIsSaving: (saving) => set({ isSaving: saving }),
 
       setLastSaved: (timestamp) => set({ lastSaved: timestamp }),
+
+      setUserId: (userId) => set({ userId }),
+
+      setIsSyncing: (syncing) => set({ isSyncing: syncing }),
+
+      setLastSyncTime: (timestamp) => set({ lastSyncTime: timestamp }),
 
       // Computed
       getFilteredBooks: () => {

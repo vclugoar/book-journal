@@ -17,20 +17,36 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { BookCard, BookListItem, LibraryControls } from '@/components/library';
 import { GoodreadsImportModal, BackupImportModal, ImportDropdown } from '@/components/import';
 import { ExportDropdown } from '@/components/export';
+import { useAuth, UserMenu } from '@/components/auth';
 import { useBookStore } from '@/stores/bookStore';
 import { useUIStore } from '@/stores/uiStore';
-import { getAllBooks, getAllCollages, deleteBook, deleteAllBooks } from '@/lib/db';
+import { getAllBooks, getAllCollages, deleteAllBooks, syncWithCloud, deleteBookWithSync, importLocalBooksToCloud } from '@/lib/db';
 import { exportLibraryAsJSON, exportLibraryAsCSV } from '@/lib/export';
 import type { Collage } from '@/types';
 
 export default function LibraryPage() {
-  const { books, setBooks, removeBook, viewMode, getFilteredBooks, setIsLoading, isLoading } = useBookStore();
+  const { user } = useAuth();
+  const {
+    books,
+    setBooks,
+    removeBook,
+    viewMode,
+    getFilteredBooks,
+    setIsLoading,
+    isLoading,
+    isSyncing,
+    setIsSyncing,
+    lastSyncTime,
+    setLastSyncTime,
+    setUserId
+  } = useBookStore();
   const addToast = useUIStore((state) => state.addToast);
   const [mounted, setMounted] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [backupModalOpen, setBackupModalOpen] = useState(false);
   const [collageMap, setCollageMap] = useState<Record<string, Collage>>({});
   const [allCollages, setAllCollages] = useState<Collage[]>([]);
+  const [hasImportedLocal, setHasImportedLocal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -39,33 +55,89 @@ export default function LibraryPage() {
   const loadBooks = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [loadedBooks, loadedCollages] = await Promise.all([
-        getAllBooks(),
-        getAllCollages(),
-      ]);
-      setBooks(loadedBooks);
-      setAllCollages(loadedCollages);
+      // If user is logged in, sync with cloud
+      if (user?.id) {
+        setIsSyncing(true);
+        try {
+          // Check if we need to import local books on first login
+          const localBooks = await getAllBooks();
+          if (localBooks.length > 0 && !hasImportedLocal) {
+            const imported = await importLocalBooksToCloud(user.id);
+            if (imported > 0) {
+              addToast({
+                type: 'success',
+                message: `Imported ${imported} books to cloud`,
+              });
+              setHasImportedLocal(true);
+            }
+          }
 
-      // Create a map of bookId -> collage for quick lookup
-      const map: Record<string, Collage> = {};
-      loadedCollages.forEach((collage) => {
-        map[collage.bookId] = collage;
-      });
-      setCollageMap(map);
+          const { books: cloudBooks, collages: cloudCollages } = await syncWithCloud(user.id);
+          setBooks(cloudBooks);
+          setAllCollages(cloudCollages);
+
+          const map: Record<string, Collage> = {};
+          cloudCollages.forEach((collage) => {
+            map[collage.bookId] = collage;
+          });
+          setCollageMap(map);
+          setLastSyncTime(new Date().toISOString());
+        } catch (syncError) {
+          console.error('Cloud sync failed, falling back to local:', syncError);
+          // Fall back to local data
+          const [loadedBooks, loadedCollages] = await Promise.all([
+            getAllBooks(),
+            getAllCollages(),
+          ]);
+          setBooks(loadedBooks);
+          setAllCollages(loadedCollages);
+
+          const map: Record<string, Collage> = {};
+          loadedCollages.forEach((collage) => {
+            map[collage.bookId] = collage;
+          });
+          setCollageMap(map);
+        } finally {
+          setIsSyncing(false);
+        }
+      } else {
+        // Load from local IndexedDB only
+        const [loadedBooks, loadedCollages] = await Promise.all([
+          getAllBooks(),
+          getAllCollages(),
+        ]);
+        setBooks(loadedBooks);
+        setAllCollages(loadedCollages);
+
+        const map: Record<string, Collage> = {};
+        loadedCollages.forEach((collage) => {
+          map[collage.bookId] = collage;
+        });
+        setCollageMap(map);
+      }
     } catch (error) {
       console.error('Failed to load books:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [setBooks, setIsLoading]);
+  }, [setBooks, setIsLoading, user?.id, setIsSyncing, setLastSyncTime, hasImportedLocal, addToast]);
 
   const handleImportComplete = useCallback(() => {
     loadBooks();
   }, [loadBooks]);
 
+  // Set userId when user changes
+  useEffect(() => {
+    if (user?.id) {
+      setUserId(user.id);
+    } else {
+      setUserId(null);
+    }
+  }, [user?.id, setUserId]);
+
   const handleDeleteBook = useCallback(async (id: string) => {
     const bookToDelete = books.find((b) => b.id === id);
-    await deleteBook(id);
+    await deleteBookWithSync(id, user?.id || null);
     removeBook(id);
     // Update collage map
     setCollageMap((prev) => {
@@ -77,7 +149,7 @@ export default function LibraryPage() {
       type: 'success',
       message: bookToDelete ? `Deleted "${bookToDelete.title}"` : 'Book deleted',
     });
-  }, [books, removeBook, addToast]);
+  }, [books, removeBook, addToast, user?.id]);
 
   const handleDeleteAllBooks = useCallback(async () => {
     const count = books.length;
@@ -147,6 +219,7 @@ export default function LibraryPage() {
                   Add Book
                 </Button>
               </Link>
+              <UserMenu isSyncing={isSyncing} lastSyncTime={lastSyncTime} />
             </div>
           </div>
         </div>
