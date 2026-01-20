@@ -16,12 +16,10 @@ import { Button } from '@/components/ui';
 import { Navigation } from '@/components/layout';
 import { BookCard, BookListItem, LibraryControls } from '@/components/library';
 import { GoodreadsImportModal, BackupImportModal, ImportDropdown } from '@/components/import';
-import { ExportDropdown } from '@/components/export';
 import { useAuth } from '@/components/auth';
 import { useBookStore } from '@/stores/bookStore';
 import { useUIStore } from '@/stores/uiStore';
 import { getAllBooks, getAllCollages, deleteAllBooks, syncWithCloud, deleteBookWithSync, importLocalBooksToCloud } from '@/lib/db';
-import { exportLibraryAsJSON, exportLibraryAsCSV } from '@/lib/export';
 import type { Collage } from '@/types';
 
 export default function LibraryPage() {
@@ -43,7 +41,6 @@ export default function LibraryPage() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [backupModalOpen, setBackupModalOpen] = useState(false);
   const [collageMap, setCollageMap] = useState<Record<string, Collage>>({});
-  const [allCollages, setAllCollages] = useState<Collage[]>([]);
   const [hasImportedLocal, setHasImportedLocal] = useState(false);
 
   useEffect(() => {
@@ -57,7 +54,6 @@ export default function LibraryPage() {
       getAllCollages(),
     ]);
     setBooks(loadedBooks);
-    setAllCollages(loadedCollages);
 
     const map: Record<string, Collage> = {};
     loadedCollages.forEach((collage) => {
@@ -90,7 +86,6 @@ export default function LibraryPage() {
 
       // Update state with cloud data
       setBooks(cloudBooks);
-      setAllCollages(cloudCollages);
 
       const map: Record<string, Collage> = {};
       cloudCollages.forEach((collage) => {
@@ -157,28 +152,11 @@ export default function LibraryPage() {
     await deleteAllBooks();
     setBooks([]);
     setCollageMap({});
-    setAllCollages([]);
     addToast({
       type: 'success',
       message: `Deleted ${count} books from library`,
     });
   }, [books, setBooks, addToast]);
-
-  const handleExportJSON = useCallback(() => {
-    exportLibraryAsJSON(books, allCollages);
-    addToast({
-      type: 'success',
-      message: `Exported ${books.length} books as JSON backup`,
-    });
-  }, [books, allCollages, addToast]);
-
-  const handleExportCSV = useCallback(() => {
-    exportLibraryAsCSV(books);
-    addToast({
-      type: 'success',
-      message: `Exported ${books.length} books as CSV`,
-    });
-  }, [books, addToast]);
 
   // Load books from IndexedDB
   useEffect(() => {
@@ -196,11 +174,6 @@ export default function LibraryPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation>
-        <ExportDropdown
-          onExportJSON={handleExportJSON}
-          onExportCSV={handleExportCSV}
-          disabled={books.length === 0}
-        />
         <ImportDropdown
           onImportGoodreads={() => setImportModalOpen(true)}
           onRestoreBackup={() => setBackupModalOpen(true)}
