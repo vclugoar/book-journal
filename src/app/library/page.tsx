@@ -13,11 +13,11 @@ const cozyMessages = [
   "Time to start your cozy collection",
 ];
 import { Button } from '@/components/ui';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { Navigation } from '@/components/layout';
 import { BookCard, BookListItem, LibraryControls } from '@/components/library';
 import { GoodreadsImportModal, BackupImportModal, ImportDropdown } from '@/components/import';
 import { ExportDropdown } from '@/components/export';
-import { useAuth, UserMenu } from '@/components/auth';
+import { useAuth } from '@/components/auth';
 import { useBookStore } from '@/stores/bookStore';
 import { useUIStore } from '@/stores/uiStore';
 import { getAllBooks, getAllCollages, deleteAllBooks, syncWithCloud, deleteBookWithSync, importLocalBooksToCloud } from '@/lib/db';
@@ -34,9 +34,7 @@ export default function LibraryPage() {
     getFilteredBooks,
     setIsLoading,
     isLoading,
-    isSyncing,
     setIsSyncing,
-    lastSyncTime,
     setLastSyncTime,
     setUserId
   } = useBookStore();
@@ -52,75 +50,78 @@ export default function LibraryPage() {
     setMounted(true);
   }, []);
 
+  // Load books from local IndexedDB (fast)
+  const loadLocalBooks = useCallback(async () => {
+    const [loadedBooks, loadedCollages] = await Promise.all([
+      getAllBooks(),
+      getAllCollages(),
+    ]);
+    setBooks(loadedBooks);
+    setAllCollages(loadedCollages);
+
+    const map: Record<string, Collage> = {};
+    loadedCollages.forEach((collage) => {
+      map[collage.bookId] = collage;
+    });
+    setCollageMap(map);
+    return { books: loadedBooks, collages: loadedCollages };
+  }, [setBooks]);
+
+  // Sync with cloud in background (non-blocking)
+  const syncInBackground = useCallback(async (userId: string) => {
+    setIsSyncing(true);
+    try {
+      // Check if we need to import local books on first login
+      if (!hasImportedLocal) {
+        const localBooks = await getAllBooks();
+        if (localBooks.length > 0) {
+          const imported = await importLocalBooksToCloud(userId);
+          if (imported > 0) {
+            addToast({
+              type: 'success',
+              message: `Synced ${imported} books to cloud`,
+            });
+            setHasImportedLocal(true);
+          }
+        }
+      }
+
+      const { books: cloudBooks, collages: cloudCollages } = await syncWithCloud(userId);
+
+      // Update state with cloud data
+      setBooks(cloudBooks);
+      setAllCollages(cloudCollages);
+
+      const map: Record<string, Collage> = {};
+      cloudCollages.forEach((collage) => {
+        map[collage.bookId] = collage;
+      });
+      setCollageMap(map);
+      setLastSyncTime(new Date().toISOString());
+    } catch (syncError) {
+      console.error('Cloud sync failed:', syncError);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [setBooks, setIsSyncing, setLastSyncTime, hasImportedLocal, addToast]);
+
   const loadBooks = useCallback(async () => {
     setIsLoading(true);
     try {
-      // If user is logged in, sync with cloud
+      // Step 1: Load from local IndexedDB first (instant)
+      await loadLocalBooks();
+      setIsLoading(false);
+
+      // Step 2: If logged in, sync with cloud in background
       if (user?.id) {
-        setIsSyncing(true);
-        try {
-          // Check if we need to import local books on first login
-          const localBooks = await getAllBooks();
-          if (localBooks.length > 0 && !hasImportedLocal) {
-            const imported = await importLocalBooksToCloud(user.id);
-            if (imported > 0) {
-              addToast({
-                type: 'success',
-                message: `Imported ${imported} books to cloud`,
-              });
-              setHasImportedLocal(true);
-            }
-          }
-
-          const { books: cloudBooks, collages: cloudCollages } = await syncWithCloud(user.id);
-          setBooks(cloudBooks);
-          setAllCollages(cloudCollages);
-
-          const map: Record<string, Collage> = {};
-          cloudCollages.forEach((collage) => {
-            map[collage.bookId] = collage;
-          });
-          setCollageMap(map);
-          setLastSyncTime(new Date().toISOString());
-        } catch (syncError) {
-          console.error('Cloud sync failed, falling back to local:', syncError);
-          // Fall back to local data
-          const [loadedBooks, loadedCollages] = await Promise.all([
-            getAllBooks(),
-            getAllCollages(),
-          ]);
-          setBooks(loadedBooks);
-          setAllCollages(loadedCollages);
-
-          const map: Record<string, Collage> = {};
-          loadedCollages.forEach((collage) => {
-            map[collage.bookId] = collage;
-          });
-          setCollageMap(map);
-        } finally {
-          setIsSyncing(false);
-        }
-      } else {
-        // Load from local IndexedDB only
-        const [loadedBooks, loadedCollages] = await Promise.all([
-          getAllBooks(),
-          getAllCollages(),
-        ]);
-        setBooks(loadedBooks);
-        setAllCollages(loadedCollages);
-
-        const map: Record<string, Collage> = {};
-        loadedCollages.forEach((collage) => {
-          map[collage.bookId] = collage;
-        });
-        setCollageMap(map);
+        // Don't await - let it run in background
+        syncInBackground(user.id);
       }
     } catch (error) {
       console.error('Failed to load books:', error);
-    } finally {
       setIsLoading(false);
     }
-  }, [setBooks, setIsLoading, user?.id, setIsSyncing, setLastSyncTime, hasImportedLocal, addToast]);
+  }, [loadLocalBooks, syncInBackground, user?.id, setIsLoading]);
 
   const handleImportComplete = useCallback(() => {
     loadBooks();
@@ -194,36 +195,23 @@ export default function LibraryPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <BookOpen className="h-6 w-6 text-sage" />
-              <span className="font-serif text-lg font-semibold">Moodmark</span>
-            </Link>
-            <div className="flex items-center gap-2 sm:gap-4">
-              <ThemeToggle />
-              <ExportDropdown
-                onExportJSON={handleExportJSON}
-                onExportCSV={handleExportCSV}
-                disabled={books.length === 0}
-              />
-              <ImportDropdown
-                onImportGoodreads={() => setImportModalOpen(true)}
-                onRestoreBackup={() => setBackupModalOpen(true)}
-              />
-              <Link href="/book/new">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Book
-                </Button>
-              </Link>
-              <UserMenu isSyncing={isSyncing} lastSyncTime={lastSyncTime} />
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navigation>
+        <ExportDropdown
+          onExportJSON={handleExportJSON}
+          onExportCSV={handleExportCSV}
+          disabled={books.length === 0}
+        />
+        <ImportDropdown
+          onImportGoodreads={() => setImportModalOpen(true)}
+          onRestoreBackup={() => setBackupModalOpen(true)}
+        />
+        <Link href="/book/new">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Book
+          </Button>
+        </Link>
+      </Navigation>
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

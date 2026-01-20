@@ -1,24 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { BookOpen, Sparkles, Heart, Palette, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { Navigation } from '@/components/layout';
 import { useAuth } from '@/components/auth';
 
 export default function LandingPage() {
-  const { user, isLoading } = useAuth();
-  const router = useRouter();
-
-  // Redirect to library if already logged in
-  useEffect(() => {
-    if (!isLoading && user) {
-      router.push('/library');
-    }
-  }, [user, isLoading, router]);
+  const { user } = useAuth();
 
   const features = [
     {
@@ -40,44 +30,26 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-6 w-6 text-sage" />
-              <span className="font-serif text-lg font-semibold">Moodmark</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <ThemeToggle />
-              {user ? (
-                <Link href="/library">
-                  <Button variant="primary" size="sm">
-                    Open Journal
-                  </Button>
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login">
-                    <Button variant="ghost" size="sm">
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Sign In
-                    </Button>
-                  </Link>
-                  <Link href="/signup">
-                    <Button variant="primary" size="sm">
-                      Get Started
-                    </Button>
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navigation>
+        {!user && (
+          <>
+            <Link href="/login">
+              <Button variant="ghost" size="sm">
+                <LogIn className="mr-2 h-4 w-4" />
+                Sign In
+              </Button>
+            </Link>
+            <Link href="/signup">
+              <Button variant="primary" size="sm">
+                Get Started
+              </Button>
+            </Link>
+          </>
+        )}
+      </Navigation>
 
       {/* Hero Section */}
-      <main className="pt-32 pb-20">
+      <main className="pt-16 pb-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
